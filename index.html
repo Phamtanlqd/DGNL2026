@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hệ thống thi đánh giá năng lực</title>
+<style>
+:root{--bg:#f5f6fa;--cd:#fff;--tx:#1b2333;--mu:#667085;--bd:#dfe3ec;--pr:#1d4ed8;--ps:#e3ebff;--ok:#12805c;--er:#c0392b;--wa:#b7791f;--ws:#fdf0d3;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1420;--cd:#18202f;--tx:#e8ecf5;--mu:#9aa5ba;--bd:#2b3549;--pr:#6e9bff;--ps:#1d2c52;--ok:#4fd1a1;--er:#ff8b7b;--wa:#f0b955;--ws:#473410;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1420;--cd:#18202f;--tx:#e8ecf5;--mu:#9aa5ba;--bd:#2b3549;--pr:#6e9bff;--ps:#1d2c52;--ok:#4fd1a1;--er:#ff8b7b;--wa:#f0b955;--ws:#473410;color-scheme:dark}
+html{height:100%}*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--cd);z-index:10}
+.w{max-width:1100px;margin:0 auto;padding:14px}
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:11;background:var(--cd);border-bottom:1px solid var(--bd);padding:8px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.nav b{flex:1;min-width:140px}
+.c{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:12px}
+h2{font-size:1.05rem;margin:0 0 8px}.mu{color:var(--mu)}.sm{font-size:.85rem}
+button,select,input,textarea{font:inherit;color:var(--tx)}
+button{cursor:pointer;border:1px solid var(--bd);background:var(--cd);border-radius:9px;padding:7px 12px}
+button.p{background:var(--pr);border-color:var(--pr);color:#fff}button.on{background:var(--ps);border-color:var(--pr)}button:disabled{opacity:.5}
+input,textarea,select{background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:7px}
+textarea{width:100%;min-height:80px}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.88rem}th,td{border:1px solid var(--bd);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--bg)}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.k{background:var(--bg);border-radius:10px;padding:10px;text-align:center}.k b{display:block;font-size:1.5rem}
+.bd{display:inline-block;font-size:.75rem;padding:1px 8px;border-radius:99px;background:var(--ps);color:var(--pr)}.bd.w{background:var(--ws);color:var(--wa)}
+.ex{display:grid;grid-template-columns:1fr 210px;gap:12px;align-items:start}@media(max-width:800px){.ex{grid-template-columns:1fr}}
+.o{display:block;width:100%;text-align:left;margin:6px 0;padding:10px}
+.pl{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.pl button{padding:6px 0}.pl .d{background:var(--ps);border-color:var(--pr)}.pl .f{background:var(--ws);border-color:var(--wa)}.pl .u{outline:2px solid var(--pr)}
+.tr{display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--bd);padding:7px 0}.tr span{flex:1}
+pre{white-space:pre-wrap;margin:0;font:inherit}
+#tm{font:700 1.2rem ui-monospace,monospace;padding:3px 10px;border-radius:9px;background:var(--ps);color:var(--pr)}
+.al{background:var(--ws);color:var(--wa);border-radius:8px;padding:8px 10px;margin-bottom:10px}
+</style></head><body>
+<div class="nav"><b>🎯 Hệ thống thi đánh giá năng lực</b><button id="r1" onclick="role('ad')">Quản trị</button><button id="r2" onclick="role('hs')">Thí sinh</button></div>
+<div class="w" id="app"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const LV={NB:'Nhận biết',TH:'Thông hiểu',VD:'Vận dụng',VDC:'VD cao'},TY={mc:'Nhiều lựa chọn',tf:'Đúng/Sai',sa:'Trả lời ngắn',essay:'Tự luận'};
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const SAMPLE=[
+{type:'mc',level:'NB',tag:'Hàm số',stem:'Giá trị nhỏ nhất của $f(x)=x^2-4x+3$ là',opt:{A:'−1',B:'0',C:'1',D:'3'},ans:['A'],sol:'f(x)=(x−2)²−1.'},
+{type:'mc',level:'TH',tag:'Hàm số',stem:'Đạo hàm của $y=x^3$ là',opt:{A:'$x^2$',B:'$3x^2$',C:'$3x$',D:'$x^3$'},ans:['B'],sol:''},
+{type:'mc',level:'TH',tag:'Xác suất',stem:'Gieo hai xúc xắc, xác suất tổng bằng 7 là',opt:{A:'1/12',B:'1/9',C:'1/6',D:'1/4'},ans:['C'],sol:'6/36.'},
+{type:'mc',level:'VD',tag:'Đại số',stem:'Giá trị của $\\log_2 8+\\log_3 9$ là',opt:{A:'4',B:'5',C:'6',D:'7'},ans:['B'],sol:''},
+{type:'tf',level:'TH',tag:'Hàm số',stem:'Cho $f(x)=x^3-3x$.',st:[{k:'a',t:'$f\'(x)=3x^2-3$.',lv:'NB',ok:true},{k:'b',t:'Hàm số đồng biến trên ℝ.',lv:'TH',ok:false},{k:'c',t:'Cực đại tại $x=-1$.',lv:'TH',ok:true},{k:'d',t:'$f(2)=3$.',lv:'VD',ok:false}],sol:''},
+{type:'sa',level:'VD',tag:'Đại số',stem:'Tích các nghiệm của $x^2-7x+10=0$ là',ans:['10'],sol:'Viète.'},
+{type:'sa',level:'TH',tag:'Thống kê',stem:'Trung bình cộng của 5, 7, 9, 11, 13 là',ans:['9'],sol:''},
+{type:'essay',level:'VD',tag:'Xác suất',stem:'Hộp I có 6 bi đỏ, 4 bi vàng. Lấy 1 bi bỏ sang hộp II (7 đỏ, 3 vàng) rồi lấy 1 bi từ hộp II. Tính xác suất bi lấy ra là bi đỏ.',sol:'Rubric: lập sơ đồ 0,5; công thức xác suất toàn phần 1,0; kết quả 0,5.'}];
+const ROSTER='10001,Nguyễn Văn An,12A1\n10002,Trần Thị Bình,12A1\n10003,Lê Minh Châu,12A2\n10004,Phạm Quốc Dũng,12A2\n10005,Hoàng Thu Hà,12A3';
+let D=load();let S=null,T=null,tab='bank',mode='ad';
+function init(){return{bank:SAMPLE.map((q,i)=>({...q,no:i+1})),cfg:{name:'Kỳ thi thử Toán',mon:'Toán',min:30,n:4,codes:[]},roster:ROSTER,subs:{},spec:{}}}
+function load(){try{const d=JSON.parse(localStorage.getItem('dgnl2'));if(d&&d.bank)return d}catch(e){}return init()}
+function save(){try{localStorage.setItem('dgnl2',JSON.stringify(D))}catch(e){}}
+const cl=s=>String(s).replace(/[⟦⟧]/g,'').trim();
+/* ---------- Bóc tách đề (cùng quy ước OLM/CV7991) ---------- */
+function opts(t){const re=/(?:^|\s)⟦?([A-D])(?:\.⟧?|⟧\.)(?=\s|$)/g;let m,p=[],w='A';while((m=re.exec(t))){if(m[1]===w){p.push([m.index,m[1],m[0].includes('⟦')]);w=String.fromCharCode(w.charCodeAt(0)+1)}}
+ if(p.length<4)return null;const o={},a=[];p.forEach(([i,k,u],n)=>{const e=p[n+1]?p[n+1][0]:t.length;o[k]=cl(t.slice(i,e).replace(/^\s*⟦?[A-D](\.⟧?|⟧\.)/,''));if(u)a.push(k)});return{stem:t.slice(0,p[0][0]),opt:o,ans:a}}
+function parseLines(L){const out=[];let c=null,hd=false,G=null;
+ const fin=()=>{if(!c)return;const b=c.b,t=b.join('\n'),q={level:c.lv,tag:'',pass:c.g,sol:cl(c.h.join('\n'))};
+  const st=b.filter(l=>/^⟦?[a-d](\)⟧|⟧\)|\)|\.⟧|⟧\.|\.)\s/.test(l));
+  if(c.tl){q.type='essay';q.stem=cl(t)}
+  else if(c.tf||st.length>=3){q.type='tf';q.stem=cl(b.filter(l=>!st.includes(l)).join('\n'));q.st=st.map(l=>{const ok=l.slice(0,4).includes('⟦');let r=l.replace(/^⟦?[a-d][).]?⟧?[).]?\s*/,'');const m=r.match(/^\s*#?\s*\[(NB|TH|VDC|VD)\]\s*#?\s*/);return{k:l.match(/[a-d]/)[0],t:cl(m?r.slice(m[0].length):r.replace(/^#\s*/,'')),lv:m?m[1]:c.lv,ok}});q.level=q.level||(q.st[0]||{}).lv}
+  else{const o=opts(t),sa=t.match(/Trả lời:\s*\[\[(.*?)\]\]/);
+   if(o){q.type='mc';q.stem=cl(o.stem);q.opt=o.opt;q.ans=o.ans}
+   else if(sa){q.type='sa';q.stem=cl(t.slice(0,sa.index));q.ans=sa[1].split('||').map(s=>s.trim())}
+   else{q.type='essay';q.stem=cl(t)}}
+  out.push(q);c=null};
+ for(const l of L){let m;
+  if(/^\[DIV\]/.test(l)){fin();G=[];continue}
+  if(/^\[(ONE|NODIV)\]/.test(l)){fin();G=null;continue}
+  if(/^\[(LV\d|TDBT)\]/.test(l)||/^(Phần|PHẦN)\s+[0-9IVX]+/.test(l)){fin();hd=false;continue}
+  if(m=l.match(/^Câu\s+(\d+)\s*[.:]\s*((?:\[[A-Z0-9]+\]\s*)*)(.*)$/)){fin();const tg=[...m[2].matchAll(/\[([A-Z0-9]+)\]/g)].map(x=>x[1]);c={lv:tg.find(x=>LV[x]),tf:tg.includes('TF'),tl:tg.includes('TL'),b:m[3]?[m[3]]:[],h:[],g:G?G.join('\n'):''};hd=false;continue}
+  if(!c){if(G)G.push(l);continue}
+  if(/^\[HDG\]/.test(l)){hd=true;const r=l.slice(5).trim();if(r)c.h.push(r);continue}
+  (hd?c.h:c.b).push(l)}
+ fin();return out}
+async function docxLines(f){const z=await JSZip.loadAsync(await f.arrayBuffer()),W='http://schemas.openxmlformats.org/wordprocessingml/2006/main',M='http://schemas.openxmlformats.org/officeDocument/2006/math';
+ const x=new DOMParser().parseFromString(await z.file('word/document.xml').async('string'),'application/xml'),L=[];
+ for(const p of x.getElementsByTagNameNS(W,'p')){let s='';for(const n of p.childNodes){
+  if(n.localName==='r'){const t=[...n.getElementsByTagNameNS(W,'t')].map(e=>e.textContent).join(''),u=n.getElementsByTagNameNS(W,'u')[0];s+=(u&&u.getAttributeNS(W,'val')!=='none'&&t.trim())?'⟦'+t+'⟧':t}
+  else if(n.localName==='oMath'||n.localName==='oMathPara')s+='$'+[...n.getElementsByTagNameNS(M,'t')].map(e=>e.textContent).join('')+'$'}
+  s=s.replace(/⟧⟦/g,'').trim();if(s)L.push(s)}
+ let k=-1;L.forEach((l,i)=>{if(/FILE MẪU|Trước khi import/.test(l))k=i});return L.slice(k+1)}
+async function importFile(ev){const f=ev.target.files[0];if(!f)return;let q=[],msg='';
+ try{if(/\.docx$/i.test(f.name))q=parseLines(await docxLines(f));
+  else if(/\.json$/i.test(f.name)){const d=JSON.parse(await f.text());q=(d.items||[]).filter(i=>i.type!=='reading').map(i=>({type:i.type,level:i.level,tag:'',stem:i.stem,opt:i.options,ans:i.answer,pass:'',sol:i.solution,st:(i.statements||[]).map(s=>({k:s.key,t:s.text,lv:s.level||i.level,ok:s.correct}))}))}
+  else if(/\.pdf$/i.test(f.name)){alert('PDF không giữ được gạch chân đáp án và công thức nên chưa đọc trực tiếp. Hãy chuyển PDF sang Word (hoặc dùng bản Word gốc) rồi tải lên.');return}
+  else{alert('Chỉ nhận .docx hoặc .json');return}}catch(e){alert('Không đọc được file: '+e.message);return}
+ if(!q.length){alert('Không tìm thấy câu hỏi nào theo định dạng mẫu.');return}
+ const sel=$('#rep')&&$('#rep').checked;const base=sel?[]:D.bank;D.bank=[...base,...q].map((x,i)=>({...x,no:i+1}));D.cfg.codes=[];save();show()}
+/* ---------- Sinh mã đề ---------- */
+function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function shuf(a,r){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function gen(){const n=+$('#nc').value||1;D.cfg.n=n;D.cfg.codes=[];
+ for(let i=0;i<n;i++){const code=101+i,r=rng(code*7919+D.bank.length);let qs=[];
+  ['mc','tf','sa','essay'].forEach(t=>qs.push(...shuf(D.bank.filter(q=>q.type===t),r)));
+  qs=qs.map(q=>{const c={...q};if(q.type==='mc'){const ks=shuf(Object.keys(q.opt),r);c.ov=ks.map(k=>q.opt[k]);c.key=ks.indexOf(q.ans[0])}
+   if(q.type==='tf'){const s=shuf(q.st,r);c.sv=s.map(x=>x.t);c.keys=s.map(x=>!!x.ok)}return c});
+  D.cfg.codes.push({code,qs})}save();show()}
+function grade(code,ans){const cd=D.cfg.codes.find(c=>c.code==code);let s=0,mx=0,es=0;
+ cd.qs.forEach((q,i)=>{const a=ans[i];if(q.type==='essay'){es++;return}mx++;
+  if(q.type==='mc'&&a===q.key)s++;
+  if(q.type==='tf'&&Array.isArray(a)){const n=a.filter((v,j)=>v===q.keys[j]).length;s+=[0,.1,.25,.5,1][n]||0}
+  if(q.type==='sa'&&a){const f=x=>String(x).trim().replace(',','.').replace(/\s+/g,'').toLowerCase();if(q.ans.some(k=>f(k)===f(a)))s++}});
+ return{s,mx,es,p:mx?s/mx*10:0}}
+/* ---------- Xuất file ---------- */
+async function save2(name,data,type){const d=await claude.use('downloads');if(!d){alert('Môi trường này chưa cho phép tải file.');return}try{await d.save({filename:name,data:new Blob([data],{type})})}catch(e){if(e&&e.code!=='declined')alert('Không lưu được: '+(e.message||e.code))}}
+function qHtml(q,i){const p=q.pass?`<div class="ps">${esc(q.pass)}</div>`:'';let b='';
+ if(q.type==='mc')b=q.ov.map((o,k)=>`<div class="op">${'ABCD'[k]}. ${esc(o)}</div>`).join('');
+ if(q.type==='tf')b=q.sv.map((o,k)=>`<div class="op">${'abcd'[k]}) ${esc(o)} &nbsp; ☐ Đúng &nbsp; ☐ Sai</div>`).join('');
+ if(q.type==='sa')b='<div class="op">Trả lời: ......................................</div>';
+ if(q.type==='essay')b='<div style="height:110px"></div>';
+ return `${p}<div class="q"><b>Câu ${i+1}.</b> ${esc(q.stem)}${b}</div>`}
+const CSS='<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"><script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"><\/script><script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:\'$$\',right:\'$$\',display:true},{left:\'$\',right:\'$\',display:false}]})"><\/script><style>body{font:14px/1.5 serif;margin:20px}.q{margin:10px 0}.op{margin:3px 0 3px 18px}.ps{border:1px dashed #999;padding:6px;margin:8px 0;white-space:pre-wrap}.pg{page-break-after:always}h3{text-align:center;margin:4px}table{border-collapse:collapse}td,th{border:1px solid #333;padding:3px 7px}</style>';
+function expDe(){const c=D.cfg;let h='<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>Đề thi</title>'+CSS+'</head><body>';
+ c.codes.forEach(cd=>{h+=`<div class="pg"><h3>${esc(c.name)}</h3><h3>Môn: ${esc(c.mon)} · Thời gian: ${c.min} phút · <u>MÃ ĐỀ ${cd.code}</u></h3><p>Họ tên: ........................................ SBD: ............ Lớp: ........</p>`+cd.qs.map(qHtml).join('')+'</div>'});
+ save2('de-thi-offline.html',h+'</body></html>','text/html')}
+function expDA(){let h='<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>Đáp án</title>'+CSS+'</head><body><h3>ĐÁP ÁN '+esc(D.cfg.name)+'</h3>';
+ D.cfg.codes.forEach(cd=>{h+=`<h4>Mã đề ${cd.code}</h4><table><tr><th>Câu</th><th>Dạng</th><th>Đáp án</th></tr>`+cd.qs.map((q,i)=>`<tr><td>${i+1}</td><td>${TY[q.type]}</td><td>${q.type==='mc'?'ABCD'[q.key]:q.type==='tf'?q.keys.map((v,k)=>'abcd'[k]+':'+(v?'Đ':'S')).join(' '):q.type==='sa'?esc(q.ans.join(' | ')):'Chấm theo rubric'}</td></tr>`).join('')+'</table>'});
+ save2('dap-an-cac-ma-de.html',h+'</body></html>','text/html')}
+function csv(rows){return '\ufeff'+rows.map(r=>r.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\n')}
+function matrix(){const g={};D.bank.forEach(q=>{const k=(q.tag||'Chưa gán')+'|'+q.type;(g[k]=g[k]||{t:q.tag||'Chưa gán',y:q.type,c:{NB:0,TH:0,VD:0,VDC:0},n:[]});g[k].c[q.level||'TH']++;g[k].n.push(q.no)});return Object.values(g).sort((a,b)=>a.t.localeCompare(b.t))}
+function expMT(){const R=[['Chủ đề','Dạng câu','Nhận biết','Thông hiểu','Vận dụng','VD cao','Tổng','Câu số','Yêu cầu cần đạt']];
+ matrix().forEach(m=>R.push([m.t,TY[m.y],m.c.NB,m.c.TH,m.c.VD,m.c.VDC,m.n.length,m.n.join(' '),D.spec[m.t+'|'+m.y]||'']));save2('ma-tran-dac-ta.csv',csv(R),'text/csv')}
+function rows(){return D.roster.split('\n').map(l=>l.split(',').map(s=>s.trim())).filter(r=>r[0]).map(r=>({sbd:r[0],ten:r[1]||'',lop:r[2]||''}))}
+function expKQ(){const R=[['SBD','Họ tên','Lớp','Mã đề','Điểm tự động','Tối đa','Điểm /10','Tự luận chờ chấm','Số lần vi phạm','Trạng thái','Giờ nộp']];
+ rows().forEach(r=>{const s=D.subs[r.sbd];if(!s)return R.push([r.sbd,r.ten,r.lop,'','','','','','','Vắng thi',''],);const g=s.done?grade(s.code,s.ans):{s:'',mx:'',p:'',es:''};R.push([r.sbd,r.ten,r.lop,s.code,g.s,g.mx,s.done?g.p.toFixed(2):'',g.es,s.viol,s.done?'Đã nộp':'Đang thi/chưa nộp',s.end?new Date(s.end).toLocaleString('vi-VN'):''])});
+ save2('ket-qua-ky-thi.csv',csv(R),'text/csv')}
+/* ---------- Giao diện quản trị ---------- */
+function role(r){mode=r;if(r==='hs'&&S&&!S.done){}show()}
+function show(){$('#r1').className=mode==='ad'?'on':'';$('#r2').className=mode==='hs'?'on':'';clearInterval(T);mode==='ad'?admin():(S&&!S.done?exam():login())}
+function admin(){const tabs=[['bank','1. Ngân hàng đề'],['mt','2. Ma trận đặc tả'],['cd','3. Mã đề & xuất offline'],['gs','4. Giám sát & kết quả']];
+ let h=`<div class="c" style="display:flex;gap:6px;flex-wrap:wrap">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="tab='${t[0]}';show()">${t[1]}</button>`).join('')}</div>`;
+ if(tab==='bank')h+=`<div class="c"><h2>Nhập đề gốc</h2><p class="sm mu">Tải file Word theo mẫu OLM/CV7991 (đáp án gạch chân, thẻ [NB] [TH] [VD] [TF] [HDG], trả lời ngắn dạng [[đáp án]]) hoặc file .json xuất từ <code>dgnl_import.py</code> (giữ công thức, ảnh). PDF cần chuyển sang Word trước.</p><input type="file" accept=".docx,.json,.pdf" onchange="importFile(event)"> <label class="sm"><input type="checkbox" id="rep"> thay toàn bộ ngân hàng</label>
+ <div class="al sm" style="margin-top:10px">Nhập trực tiếp từ Word chỉ lấy được chữ và gạch chân; công thức Word chuyển thành văn bản thô, hình ảnh bị bỏ qua.</div></div>
+ <div class="c"><h2>Ngân hàng: ${D.bank.length} câu</h2><div class="tw"><table><tr><th>#</th><th>Dạng</th><th>Mức</th><th>Chủ đề (gán để lập ma trận)</th><th>Nội dung</th><th>Đáp án</th></tr>${D.bank.map((q,i)=>`<tr><td>${q.no}</td><td>${TY[q.type]}</td><td>${LV[q.level]||'—'}</td><td><input size="12" value="${esc(q.tag)}" onchange="D.bank[${i}].tag=this.value;save()"></td><td>${esc(q.stem).slice(0,110)}</td><td>${q.type==='tf'?q.st.map(s=>s.k+':'+(s.ok?'Đ':'S')).join(' '):esc((q.ans||[]).join('/'))||'—'}</td></tr>`).join('')}</table></div>
+ <button onclick="if(confirm('Xóa toàn bộ ngân hàng?')){D.bank=[];D.cfg.codes=[];save();show()}">Xóa ngân hàng</button> <button onclick="D=init();save();show()">Nạp lại dữ liệu mẫu</button></div>`;
+ if(tab==='mt'){const m=matrix(),tot={NB:0,TH:0,VD:0,VDC:0};m.forEach(x=>Object.keys(tot).forEach(k=>tot[k]+=x.c[k]));
+  h+=`<div class="c"><h2>Ma trận và bản đặc tả (sinh từ đề gốc)</h2><p class="sm mu">Tự động đếm theo chủ đề × dạng câu × mức độ. Nhập “yêu cầu cần đạt” cho từng dòng rồi xuất CSV (mở bằng Excel).</p><div class="tw"><table><tr><th>Chủ đề</th><th>Dạng câu</th>${Object.values(LV).map(v=>`<th>${v}</th>`).join('')}<th>Tổng</th><th>Câu số</th><th>Yêu cầu cần đạt</th></tr>${m.map(x=>`<tr><td>${esc(x.t)}</td><td>${TY[x.y]}</td>${Object.keys(tot).map(k=>`<td>${x.c[k]||''}</td>`).join('')}<td>${x.n.length}</td><td>${x.n.join(', ')}</td><td><input value="${esc(D.spec[x.t+'|'+x.y]||'')}" onchange="D.spec['${esc(x.t)}|${x.y}']=this.value;save()"></td></tr>`).join('')}<tr><th colspan="2">Tổng</th>${Object.keys(tot).map(k=>`<th>${tot[k]}</th>`).join('')}<th>${D.bank.length}</th><th colspan="2"></th></tr></table></div><p><button class="p" onclick="expMT()">Xuất ma trận đặc tả (CSV)</button></p></div>`}
+ if(tab==='cd'){const c=D.cfg;h+=`<div class="c"><h2>Thiết lập kỳ thi và sinh mã đề</h2><div class="g"><label class="sm">Tên kỳ thi<br><input id="cn" value="${esc(c.name)}" onchange="D.cfg.name=this.value;save()"></label><label class="sm">Môn<br><input id="cm" value="${esc(c.mon)}" onchange="D.cfg.mon=this.value;save()"></label><label class="sm">Thời gian (phút)<br><input id="ct" type="number" value="${c.min}" onchange="D.cfg.min=+this.value;save()"></label><label class="sm">Số mã đề<br><input id="nc" type="number" min="1" max="12" value="${c.n}"></label></div><p><button class="p" onclick="gen()">Sinh mã đề</button> <span class="sm mu">Đảo thứ tự câu trong từng dạng, đảo phương án A-D và các ý a-d. Câu chùm (ngữ liệu chung) chưa được giữ liền nhóm khi đảo.</span></p>
+  ${c.codes.length?`<p>Đã sinh: ${c.codes.map(x=>`<span class="bd">Mã ${x.code}</span>`).join(' ')}</p><button onclick="expDe()">Tải đề offline (HTML, in ra PDF)</button> <button onclick="expDA()">Tải đáp án các mã đề</button><p class="sm mu">Mở file đề bằng trình duyệt rồi in (Ctrl+P). Công thức cần có mạng một lần để hiển thị.</p>`:'<p class="mu">Chưa có mã đề.</p>'}</div>`}
+ if(tab==='gs'){const R=rows(),sb=R.map(r=>D.subs[r.sbd]),dt=sb.filter(Boolean),nop=dt.filter(s=>s.done),vp=dt.filter(s=>s.viol>0);
+  h+=`<div class="c"><h2>Danh sách thí sinh</h2><textarea id="ro" onchange="D.roster=this.value;save();show()" placeholder="SBD,Họ tên,Lớp">${esc(D.roster)}</textarea><p class="sm mu">Mỗi dòng: SBD,Họ tên,Lớp. Thí sinh vào thi bằng SBD, mã đề được gán xoay vòng.</p></div>
+  <div class="c"><div class="g"><div class="k"><b>${R.length}</b>Tổng danh sách</div><div class="k"><b>${dt.length}</b>Đã vào thi</div><div class="k"><b>${nop.length}</b>Đã nộp bài</div><div class="k"><b>${R.length-dt.length}</b>Vắng thi</div><div class="k"><b>${vp.length}</b>Có vi phạm</div></div></div>
+  <div class="c"><div class="tw"><table><tr><th>SBD</th><th>Họ tên</th><th>Lớp</th><th>Mã đề</th><th>Điểm /10</th><th>Vi phạm</th><th>Trạng thái</th></tr>${R.map(r=>{const s=D.subs[r.sbd],g=s&&s.done?grade(s.code,s.ans):null;return `<tr><td>${esc(r.sbd)}</td><td>${esc(r.ten)}</td><td>${esc(r.lop)}</td><td>${s?s.code:''}</td><td>${g?g.p.toFixed(2)+(g.es?' <span class="bd w">+tự luận</span>':''):''}</td><td>${s&&s.viol?'<span class="bd w">'+s.viol+' lần</span>':''}</td><td>${s?(s.done?'Đã nộp':'Đang thi'):'Vắng'}</td></tr>`}).join('')}</table></div><p><button class="p" onclick="expKQ()">Xuất kết quả (CSV)</button> <button onclick="if(confirm('Xóa toàn bộ bài làm?')){D.subs={};save();show()}">Xóa dữ liệu bài làm</button></p></div>`}
+ $('#app').innerHTML=h}
+/* ---------- Phòng thi thí sinh ---------- */
+function login(){const c=D.cfg;$('#app').innerHTML=`<div class="c" style="max-width:460px;margin:30px auto"><h2>${esc(c.name)}</h2><p class="mu">Môn ${esc(c.mon)} · ${c.min} phút</p>${c.codes.length?`<label class="sm">Số báo danh<br><input id="sb" placeholder="VD: 10001" style="width:100%"></label><p><button class="p" onclick="enter()">Vào phòng thi</button></p><p class="sm mu">Thử với SBD 10001 đến 10005. Trong lúc thi, rời tab hoặc chuyển cửa sổ sẽ bị ghi nhận vi phạm.</p>`:'<div class="al">Chưa có mã đề. Quản trị viên cần sinh mã đề trước.</div>'}</div>`}
+function enter(){const sbd=$('#sb').value.trim(),r=rows().find(x=>x.sbd===sbd);if(!r){alert('SBD không có trong danh sách.');return}
+ const idx=rows().indexOf(r);let s=D.subs[sbd];if(s&&s.done){S=s;S.sbd=sbd;return result()}
+ if(!s){s=D.subs[sbd]={code:D.cfg.codes[idx%D.cfg.codes.length].code,ans:{},flag:{},viol:0,start:Date.now(),done:false,qi:0}}
+ S=s;S.sbd=sbd;S.name=r.ten;save();exam()}
+function exam(){const cd=D.cfg.codes.find(c=>c.code==S.code),q=cd.qs[S.qi],a=S.ans[S.qi];let b='';
+ if(q.type==='mc')b=q.ov.map((o,k)=>`<button class="o ${a===k?'on':''}" onclick="ans(${k})"><b>${'ABCD'[k]}.</b> ${esc(o)}</button>`).join('');
+ if(q.type==='tf')b=q.sv.map((o,k)=>`<div class="tr"><span><b>${'abcd'[k]})</b> ${esc(o)}</span><button class="${a&&a[k]===true?'on':''}" onclick="tf(${k},true)">Đúng</button><button class="${a&&a[k]===false?'on':''}" onclick="tf(${k},false)">Sai</button></div>`).join('');
+ if(q.type==='sa')b=`<input value="${esc(a||'')}" placeholder="Nhập đáp án" oninput="ans(this.value,1)" style="width:100%;max-width:300px">`;
+ if(q.type==='essay')b=`<textarea style="min-height:160px" oninput="ans(this.value,1)" placeholder="Trình bày bài làm...">${esc(a||'')}</textarea>`;
+ const pl=cd.qs.map((x,i)=>{const v=S.ans[i],d=Array.isArray(v)?v.some(z=>z!=null):(v!==undefined&&v!=='');return `<button class="${d?'d':''} ${S.flag[i]?'f':''} ${i===S.qi?'u':''}" onclick="S.qi=${i};save();exam()">${i+1}</button>`}).join('');
+ $('#app').innerHTML=`<div class="c" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div style="flex:1"><b>${esc(D.cfg.name)}</b> · Mã ${S.code}<div class="sm mu">${esc(S.name)} · SBD ${esc(S.sbd)}</div></div><div id="tm">--:--</div><button class="p" onclick="submit()">Nộp bài</button></div>
+ ${S.viol?`<div class="al sm">Đã ghi nhận ${S.viol} lần rời khỏi màn hình thi.</div>`:''}
+ <div class="ex"><div class="c">${q.pass?`<div class="al sm" style="white-space:pre-wrap;background:var(--bg);color:var(--tx)">${esc(q.pass)}</div>`:''}<div class="sm mu">Câu ${S.qi+1}/${cd.qs.length} <span class="bd">${TY[q.type]}</span> ${q.level?`<span class="bd">${LV[q.level]}</span>`:''}</div><p style="white-space:pre-wrap">${esc(q.stem)}</p>${b}
+ <p><button onclick="S.qi=Math.max(0,S.qi-1);save();exam()">← Trước</button> <button onclick="S.flag[S.qi]=!S.flag[S.qi];save();exam()">${S.flag[S.qi]?'Bỏ đánh dấu':'⚑ Đánh dấu'}</button> <button onclick="S.qi=Math.min(${cd.qs.length-1},S.qi+1);save();exam()">Sau →</button></p></div>
+ <div class="c"><b class="sm">Bảng câu hỏi</b><div class="pl" style="margin-top:8px">${pl}</div><p class="sm mu">Xanh: đã làm · Vàng: xem lại. Bài được lưu tự động.</p></div></div>`;
+ clearInterval(T);T=setInterval(tick,500);tick()}
+function ans(v,keep){S.ans[S.qi]=v;save();if(!keep)exam()}
+function tf(k,v){const a=(S.ans[S.qi]||[null,null,null,null]).slice();a[k]=v;S.ans[S.qi]=a;save();exam()}
+function tick(){const r=Math.max(0,Math.round((S.start+D.cfg.min*60000-Date.now())/1000)),e=$('#tm');if(e){e.textContent=String(Math.floor(r/60)).padStart(2,'0')+':'+String(r%60).padStart(2,'0')}if(r<=0)fin()}
+function submit(){const n=D.cfg.codes.find(c=>c.code==S.code).qs.filter((q,i)=>{const v=S.ans[i];return !(Array.isArray(v)?v.some(z=>z!=null):(v!==undefined&&v!==''))}).length;if(confirm('Nộp bài?'+(n?`\nCòn ${n} câu chưa làm.`:'')))fin()}
+function fin(){clearInterval(T);S.done=true;S.end=Date.now();save();result()}
+function result(){const g=grade(S.code,S.ans);$('#app').innerHTML=`<div class="c" style="max-width:520px;margin:30px auto;text-align:center"><h2>Bài làm đã được nộp</h2><p class="mu">${esc(S.sbd)} · Mã đề ${S.code}</p><div style="font-size:2.4rem;font-weight:800;color:var(--pr)">${g.p.toFixed(2)}<span class="mu" style="font-size:1rem"> /10</span></div><p class="sm">Điểm phần trắc nghiệm, đúng/sai, trả lời ngắn: ${(+g.s.toFixed(2))}/${g.mx}${g.es?`. Có ${g.es} câu tự luận chờ giáo viên chấm.`:''}</p><button onclick="S=null;login()">Thoát</button></div>`}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&S&&!S.done&&mode==='hs'){S.viol++;save()}});
+show();
+</script></body></html>
