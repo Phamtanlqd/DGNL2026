@@ -39,7 +39,7 @@ pre{white-space:pre-wrap;margin:0;font:inherit}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-const API_URL='https://script.google.com/macros/s/AKfycbxK8BN1qVwe5eFXILZEY9TRUQLJKUkBDVH6abZPPx0b6WCL0tQh2DOz6AAFHwH_F3ABew/exec';/* DÁN URL Web App Apps Script vào đây để thi nhiều máy; để trống = chạy thử trên 1 trình duyệt */
+const API_URL='https://script.google.com/macros/s/AKfycbxK8BN1qVwe5eFXILZEY9TRUQLJKukBDVH6abZPPx0b6WCL0tQh2Doz6AAFHwH_F3ABew/exec';/* DÁN URL Web App Apps Script vào đây để thi nhiều máy; để trống = chạy thử trên 1 trình duyệt */
 const LV={NB:'Nhận biết',TH:'Thông hiểu',VD:'Vận dụng',VDC:'VD cao'},TY={mc:'Nhiều lựa chọn',tf:'Đúng/Sai',sa:'Trả lời ngắn',essay:'Tự luận'};
 const ER=s=>esc(s).replace(/⟪IMG:(\w+)⟫/g,(m,id)=>D.imgs&&D.imgs[id]?`<img src="${D.imgs[id]}" style="max-width:100%;vertical-align:middle">`:'[hình]');
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -99,7 +99,7 @@ function om(n){switch(n.localName){
  case 'rad':{const dg=omOne(n,'deg').trim(),h=omPr(n,'radPr','degHide');return dg&&h!=='1'&&h!=='on'?`\\sqrt[${dg}]{${omOne(n,'e')}}`:`\\sqrt{${omOne(n,'e')}}`}
  case 'd':{let b=omPr(n,'dPr','begChr'),e=omPr(n,'dPr','endChr'),sp=omPr(n,'dPr','sepChr');if(b===null)b='(';if(e===null)e=')';if(sp===null||sp==='')sp='|';
   const es=omKids(n,['e']);
-  if(b==='{'&&e===''&&es.length===1&&omKids(es[0],['eqArr']).length)return `\\begin{cases}${om(omKids(es[0],['eqArr'])[0]).replace(/^\\begin\{aligned\}|\\end\{aligned\}$/g,'')}\\end{cases}`;
+  if(b==='{'&&e===''&&es.length===1&&omKids(es[0],['eqArr']).length)return `\\begin{cases}${om(omKids(es[0],['eqArr'])[0]).replace(/^\\begin\{aligned\}|\\end\{aligned\}$/g, '')}\\end{cases}`;
   return `\\left${omDelim(b)}${es.map(omBody).join(omT(sp)==='|'?'\\middle|':omT(sp))}\\right${omDelim(e)}`}
  case 'nary':{const ch=omPr(n,'naryPr','chr'),mp={'':'\\int ','∫':'\\int ','∬':'\\iint ','∭':'\\iiint ','∮':'\\oint ','∑':'\\sum ','∏':'\\prod ','⋃':'\\bigcup ','⋂':'\\bigcap '},sym=ch===null?'\\int ':(mp[ch]||'\\int ');
   const sh=omPr(n,'naryPr','subHide'),ph=omPr(n,'naryPr','supHide'),sb=omOne(n,'sub'),sp=omOne(n,'sup');
@@ -214,7 +214,7 @@ function tplHtml(){const X=tpl(),sel=(E,t,l)=>E.filter(e=>e.t===t&&(l==null||e.l
  return `<p><b>1. MA TRẬN ĐỀ KIỂM TRA</b></p><table>${head(0)}${body1}${foot(0)}</table><p><b>2. BẢN ĐẶC TẢ ĐỀ KIỂM TRA</b></p><table>${head(1)}${body2}${foot(1)}</table>`}
 function expTpl(){const c=D.cfg,doc=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Ma trận</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]--><style>@page Section1{size:841.9pt 595.3pt;mso-page-orientation:landscape;margin:40pt}div.Section1{page:Section1}body{font:11pt "Times New Roman"}table{border-collapse:collapse;width:100%}td,th{border:1px solid #000;padding:2px 4px;text-align:center;vertical-align:middle;font-size:10pt}td.l{text-align:left}</style></head><body><div class="Section1"><p align="center"><b>${esc(c.name)} · Môn ${esc(c.mon)}</b></p>${tplHtml()}</div></body></html>`;save2('ma-tran-dac-ta-CV7991.doc',doc,'application/msword')}
 /* ---------- Kết nối máy chủ, nhập danh sách ---------- */
-async function api(a,p){try{const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({a,...p})});const text=await r.text();try{return JSON.parse(text);}catch(err){console.error("Phản hồi không phải JSON:",text);if(text.includes("<!DOCTYPE html>")||text.includes("<html")){return{ok:false,err:"Lỗi phân quyền Web App! Hãy chọn 'Who has access' là 'Anyone' trong Google Apps Script."};}return{ok:false,err:"Phản hồi máy chủ không hợp lệ: "+text.slice(0,80)};}}catch(e){return{ok:false,err:'Không kết nối được máy chủ'}}}
+async function api(a,p){try{const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({a,...p})});const text=await r.text();try{return JSON.parse(text);}catch(e1){try{const f=text.indexOf('{'),l=text.lastIndexOf('}');if(f!==-1&&l!==-1&&l>f)return JSON.parse(text.substring(f,l+1));}catch(e2){}console.error("Phản hồi không phải JSON:",text);if(text.includes("<!DOCTYPE html>")||text.includes("<html")){return{ok:false,err:"Lỗi phân quyền Web App! Hãy chọn 'Who has access' là 'Anyone' trong Google Apps Script."};}return{ok:false,err:"Phản hồi máy chủ không hợp lệ: "+text.slice(0,80)};}}catch(e){return{ok:false,err:'Không kết nối được máy chủ'}}}
 function AK(){let k=sessionStorage.getItem('ak');if(!k){k=prompt('Mã quản trị:')||'';sessionStorage.setItem('ak',k)}return k}
 async function pub(){const r=await api('publish',{key:AK(),cfg:D.cfg,codes:D.cfg.codes,roster:D.roster,gcfg:{emax:D.cfg.emax,thr:D.cfg.thr,gr:D.gr},imgs:D.imgs});if(!r.ok)sessionStorage.removeItem('ak');alert(r.ok?`Đã đăng ${r.n} mã đề và ${r.hs} thí sinh.`:r.err)}
 async function refresh(){const r=await api('stats',{key:AK()});if(!r.ok){sessionStorage.removeItem('ak');alert(r.err);return}D.subs=r.subs;show()}
