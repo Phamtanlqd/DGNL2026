@@ -53,7 +53,7 @@ pre{white-space:pre-wrap;margin:0;font:inherit}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-const API_URL='https://script.google.com/macros/s/AKfycbz7u3EOWEBxTTsNipd3613Nk0m8WXyg0mYznDQUmgGxwSrN7lMW8nC8Ef1Cw6VihdzyoA/exec'; // Thay URL Web App của thầy vào đây
+const API_URL='https://script.google.com/macros/s/AKfycbz7u3EOWEBxTTsNipd3613Nk0m8WXyg0mYznDQUmgGxwSrN7lMW8nC8Ef1Cw6VihdzyoA/exec';
 const LV={NB:'Nhận biết',TH:'Thông hiểu',VD:'Vận dụng',VDC:'VD cao'},TY={mc:'Nhiều lựa chọn',tf:'Đúng/Sai',sa:'Trả lời ngắn',essay:'Tự luận'};
 const ER=s=>esc(s).replace(/⟪IMG:(\w+)⟫/g,(m,id)=>D.imgs&&D.imgs[id]?`<img src="${D.imgs[id]}" style="max-width:100%;vertical-align:middle">`:'[hình]');
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -86,7 +86,6 @@ function changeSubject(sub){
   show();
 }
 
-// Khởi tạo các giá trị mặc định cho D hiện tại
 D.gr = D.gr || []; D.grades = D.grades || {}; D.cfg.emax = D.cfg.emax || 2; D.cfg.pts = D.cfg.pts || {mc:3,tf:2,sa:2,essay:3}; D.imgs = D.imgs || {}; D.cfg.thr = D.cfg.thr ?? 1;
 let OV=[],ONL=false,GV=null,S=null,T=null,tab='bank',mode='ad';
 
@@ -137,11 +136,10 @@ function om(n){switch(n.localName){
 
 async function shrink(blob,ext){const bm=await createImageBitmap(blob),png=ext==='png'||ext==='gif';let w=Math.min(720,bm.width),u='';
  for(let i=0;i<6;i++){const c=document.createElement('canvas');c.width=w;c.height=Math.max(1,Math.round(bm.height*w/bm.width));const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(bm,0,0,c.width,c.height);u=c.toDataURL(png?'image/png':'image/jpeg',.78);if(u.length<=45000)break;w=Math.round(w*.8)}return u}
-let IMGSKIP=[];
 async function docxLines(f){const z=await JSZip.loadAsync(await f.arrayBuffer()),W='http://schemas.openxmlformats.org/wordprocessingml/2006/main',rels={};
  const x=new DOMParser().parseFromString(await z.file('word/document.xml').async('string'),'application/xml'),L=[],rf=z.file('word/_rels/document.xml.rels');
  if(rf)for(const r of new DOMParser().parseFromString(await rf.async('string'),'application/xml').getElementsByTagName('Relationship'))rels[r.getAttribute('Id')]=r.getAttribute('Target');
- D.imgs=D.imgs||{};IMGSKIP=[];let IN=0;const tg=Date.now().toString(36);
+ D.imgs=D.imgs||{};let IN=0;const tg=Date.now().toString(36);
  const pic=async n=>{const b=n.getElementsByTagName('a:blip')[0],v=n.getElementsByTagName('v:imagedata')[0],rid=b?b.getAttribute('r:embed'):v?v.getAttribute('r:id'):null,t=rid&&rels[rid];if(!t)return'';
   const ext=t.split('.').pop().toLowerCase();try{const u8=await z.file(t.replace(/^\/?(word\/)?/,'word/')).async('uint8array'),id='w'+tg+(++IN);D.imgs[id]=await shrink(new Blob([u8],{type:'image/'+(ext==='jpg'?'jpeg':ext)}),ext);return '⟪IMG:'+id+'⟫'}catch(e){return' [hình lỗi] '}};
  for(const p of x.getElementsByTagNameNS(W,'p')){let s='';for(const n of p.childNodes){
@@ -165,14 +163,7 @@ function gen(){const n=+$('#nc').value||1;D.cfg.n=n;D.cfg.codes=[];
    if(q.type==='tf'){const s=shuf(q.st,r);c.sv=s.map(x=>x.t);c.keys=s.map(x=>!!x.ok)}return c});
   D.cfg.codes.push({code,qs})}save();show()}
 
-function grade(code,ans){const cd=D.cfg.codes.find(c=>c.code==code);let s=0,mx=0,es=0;
- cd.qs.forEach((q,i)=>{const a=ans[i];if(q.type==='essay'){es++;return}mx++;
-  if(q.type==='mc'&&a===q.key)s++;
-  if(q.type==='sa'&&a){const f=x=>String(x).trim().toLowerCase();if(q.ans.some(k=>f(k)===f(a)))s++}});
- return{s,mx,es,p:mx?s/mx*10:0}}
-
 async function save2(name,data,type){const b=new Blob([data],{type}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),1000)}
-function csv(rows){return '\ufeff'+rows.map(r=>r.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\n')}
 function rows(){return D.roster.split('\n').map(l=>l.split(',').map(s=>s.trim())).filter(r=>r[0]).map(r=>({sbd:r[0],ten:r[1]||'',lop:r[2]||''}))}
 
 async function api(a,p){
@@ -245,5 +236,10 @@ async function fin(){if(S.fin)return;S.fin=1;clearInterval(T);
  S.g=r.g;S.done=true;result()}
 function result(){const g=S.g||{p:0};$('#app').innerHTML=`<div class="c" style="max-width:520px;margin:30px auto;text-align:center"><h2>Đã nộp bài môn ${currentSub}!</h2><div style="font-size:2.4rem;font-weight:800;color:var(--pr)">${g.p.toFixed(2)}<span class="mu" style="font-size:1rem"> /10</span></div><button onclick="S=null;login()">Thoát</button></div>`}
 
+// Thay thế MutationObserver bằng trình theo dõi không xung đột biến _t
+const _moObs = new MutationObserver(()=>{ clearTimeout(window._mjTimer); window._mjTimer = setTimeout(()=>{ if(window.renderMathInElement) renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false}); }, 40); });
+window.addEventListener('load', ()=>{ _moObs.observe($('#app'),{childList:true,subtree:true}); if(window.renderMathInElement) renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false}); });
+
+if(/[?&](thi|cham)/.test(location.search)){mode=/[?&]cham/.test(location.search)?'gv':'hs';['#r1','#r2','#r3'].forEach(x=>$(x).style.display='none')}
 show();
 </script></body></html>
