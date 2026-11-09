@@ -39,7 +39,7 @@ pre{white-space:pre-wrap;margin:0;font:inherit}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-const API_URL='https://script.google.com/macros/s/AKfycbwKTZz16rFXXZKNSv-oSpasukpFBplVaWlJ0fdWIDg91aU181z4BrJfytEC_rKmpqz98w/exec';/* DÁN URL Web App Apps Script vào đây để thi nhiều máy; để trống = chạy thử trên 1 trình duyệt */
+const API_URL='https://script.google.com/macros/s/AKfycbwKTZz16rFXXZKNSv-oSpasukpFPlaWVIJ0fDWidG91aU181z4BrJfytEC_rKmpqz98w/exec';/* DÁN URL Web App Apps Script vào đây để thi nhiều máy; để trống = chạy thử trên 1 trình duyệt */
 const LV={NB:'Nhận biết',TH:'Thông hiểu',VD:'Vận dụng',VDC:'VD cao'},TY={mc:'Nhiều lựa chọn',tf:'Đúng/Sai',sa:'Trả lời ngắn',essay:'Tự luận'};
 const ER=s=>esc(s).replace(/⟪IMG:(\w+)⟫/g,(m,id)=>D.imgs&&D.imgs[id]?`<img src="${D.imgs[id]}" style="max-width:100%;vertical-align:middle">`:'[hình]');
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -83,12 +83,12 @@ function parseLines(L){const out=[];let c=null,hd=false,G=null,TOP='';
  fin();return out}
 const OM_MAP={'≤':'\\le ','≥':'\\ge ','≠':'\\ne ','≈':'\\approx ','∞':'\\infty ','π':'\\pi ','α':'\\alpha ','β':'\\beta ','γ':'\\gamma ','δ':'\\delta ','Δ':'\\Delta ','θ':'\\theta ','Θ':'\\Theta ','λ':'\\lambda ','Λ':'\\Lambda ','μ':'\\mu ','ν':'\\nu ','ρ':'\\rho ','σ':'\\sigma ','Σ':'\\Sigma ','τ':'\\tau ','φ':'\\varphi ','ϕ':'\\phi ','Φ':'\\Phi ','ω':'\\omega ','Ω':'\\Omega ','ε':'\\varepsilon ','η':'\\eta ','κ':'\\kappa ','ξ':'\\xi ','ψ':'\\psi ','χ':'\\chi ','ζ':'\\zeta ','∈':'\\in ','∉':'\\notin ','⊂':'\\subset ','⊃':'\\supset ','⊆':'\\subseteq ','∪':'\\cup ','∩':'\\cap ','∅':'\\varnothing ','→':'\\to ','⟶':'\\to ','⇒':'\\Rightarrow ','⇔':'\\Leftrightarrow ','⇐':'\\Leftarrow ','↔':'\\leftrightarrow ','×':'\\times ','·':'\\cdot ','⋅':'\\cdot ','°':'^\\circ ','±':'\\pm ','∓':'\\mp ','−':'-','–':'-','∠':'\\angle ','⊥':'\\perp ','∥':'\\parallel ','…':'\\ldots ','⋯':'\\cdots ','∀':'\\forall ','∃':'\\exists ','∂':'\\partial ','∇':'\\nabla ','√':'\\sqrt{}','ℝ':'\\mathbb{R}','ℕ':'\\mathbb{N}','ℤ':'\\mathbb{Z}','ℚ':'\\mathbb{Q}','ℂ':'\\mathbb{C}','′':"'",'″':"''",'\u2009':'\\,','\u2005':'\\ ','\u2002':'\\ ','\u2003':'\\quad ','\u00a0':'\\ ','\u202f':'\\,','\u2061':'','\u2062':'','\u200b':'','%':'\\%','#':'\\#','&':'\\&','_':'\\_','$':'\\$','{':'\\{','}':'\\}','~':'\\sim ','≡':'\\equiv ','∼':'\\sim ','∝':'\\propto ','∘':'\\circ ','⁄':'/','≪':'\\ll ','≫':'\\gg ','↑':'\\uparrow ','↓':'\\downarrow ','⃗':''};
 const OM_FN=/^(sin|cos|tan|cot|sec|csc|log|ln|lg|lim|max|min|exp|arcsin|arccos|arctan|sinh|cosh|tanh|det|gcd|sup|inf|ker|deg|dim)$/;
-function omT(s){const mp=w=>[...w].map(c=>OM_MAP[c]!==undefined?OM_MAP[c]:c).join('');return s.replace(/[\p{L}\u0300-\u036f]+|[^\p{L}\u0300-\u036f]+/gu,w=>/^[\p{L}\u0300-\u036f]/u.test(w)&&![...w].every(c=>c.charCodeAt(0)<128||OM_MAP[c]!==undefined)?'\\text{'+w+'}':mp(w))}
-function omKids(n,names){return [...n.childNodes].filter(c=>c.nodeType===1&&names.includes(c.localName))}
-function omOne(n,name){const k=omKids(n,[name])[0];return k?omBody(k):''}
-function omBody(n){let s='';for(const c of n.childNodes){if(c.nodeType===1&&!/Pr$/.test(c.localName))s+=om(c)}return s}
-function omPr(n,pr,attr){const p=omKids(n,[pr])[0];if(!p)return null;const a=[...p.childNodes].filter(c=>c.nodeType===1&&c.localName===attr)[0];if(!a)return null;const v=a.getAttribute('m:val')??a.getAttribute('val');return v===null?'':v}
-function omDelim(c,end){const m={'':'.','{':'\\{','}':'\\}','|':'|','‖':'\\|','⟨':'\\langle ','⟩':'\\rangle ','⌊':'\\lfloor ','⌋':'\\rfloor ','⌈':'\\lceil ','⌉':'\\rceil ','〈':'\\langle ','〉':'\\rangle '};return c in m?m[c]:c}
+const omT=s=>{const mp=w=>[...w].map(c=>OM_MAP[c]!==undefined?OM_MAP[c]:c).join('');return s.replace(/[\p{L}\u0300-\u036f]+|[^\p{L}\u0300-\u036f]+/gu,w=>/^[\p{L}\u0300-\u036f]/u.test(w)&&![...w].every(c=>c.charCodeAt(0)<128||OM_MAP[c]!==undefined)?'\\text{'+w+'}':mp(w))}
+const omKids=(n,names)=>[...n.childNodes].filter(c=>c.nodeType===1&&names.includes(c.localName))
+const omOne=(n,name)=>{const k=omKids(n,[name])[0];return k?omBody(k):''}
+const omBody=n=>{let s='';for(const c of n.childNodes){if(c.nodeType===1&&!/Pr$/.test(c.localName))s+=om(c)}return s}
+const omPr=(n,pr,attr)=>{const p=omKids(n,[pr])[0];if(!p)return null;const a=[...p.childNodes].filter(c=>c.nodeType===1&&c.localName===attr)[0];if(!a)return null;const v=a.getAttribute('m:val')??a.getAttribute('val');return v===null?'':v}
+const omDelim=(c,end)=>{const m={'':'.','{':'\\{','}':'\\}','|':'|','‖':'\\|','⟨':'\\langle ','⟩':'\\rangle ','⌊':'\\lfloor ','⌋':'\\rfloor ','⌈':'\\lceil ','⌉':'\\rceil ','〈':'\\langle ','〉':'\\rangle '};return c in m?m[c]:c}
 function om(n){switch(n.localName){
  case 'r':{const t=[...n.childNodes].filter(c=>c.nodeType===1&&c.localName==='t').map(c=>c.textContent).join('');if(OM_FN.test(t.trim()))return '\\'+t.trim()+' ';return omT(t)}
  case 'f':{const num=omOne(n,'num'),den=omOne(n,'den'),ty=omPr(n,'fPr','type');if(ty==='noBar')return `\\binom{${num}}{${den}}`;return `\\frac{${num}}{${den}}`}
@@ -138,8 +138,8 @@ async function importFile(ev){const f=ev.target.files[0];if(!f)return;let q=[],m
  if(!q.length){alert('Không tìm thấy câu hỏi nào theo định dạng mẫu.');return}
  const sel=$('#rep')&&$('#rep').checked;const base=sel?[]:D.bank;D.bank=[...base,...q].map((x,i)=>({...x,no:i+1}));D.cfg.codes=[];const U=new Set([...JSON.stringify(D.bank).matchAll(/⟪IMG:(\w+)⟫/g)].map(m=>m[1]));Object.keys(D.imgs).forEach(k=>U.has(k)||delete D.imgs[k]);save();show();if(IMGSKIP.length)alert(`Có ${IMGSKIP.length} hình chưa hiển thị được (thường là công thức MathType dạng .wmf/.emf). Hãy nhập đề bằng dgnl_import.py (tự chuyển sang PNG) rồi tải file .json lên, hoặc chèn lại công thức bằng Equation của Word.`)}
 /* ---------- Sinh mã đề ---------- */
-function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-function shuf(a,r){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+const rng=s=>{return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const shuf=(a,r)=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function gen(){const n=+$('#nc').value||1;D.cfg.n=n;D.cfg.codes=[];
  for(let i=0;i<n;i++){const code=101+i,r=rng(code*7919+D.bank.length);let qs=[];
   ['mc','tf','sa','essay'].forEach(t=>qs.push(...shuf(D.bank.filter(q=>q.type===t),r)));
@@ -169,7 +169,7 @@ function expDe(){const c=D.cfg;let h='<!DOCTYPE html><html lang="vi"><head><meta
 function expDA(){let h='<!DOCTYPE html><html lang="vi"><head><meta charset="utf-8"><title>Đáp án</title>'+CSS+'</head><body><h3>ĐÁP ÁN '+esc(D.cfg.name)+'</h3>';
  D.cfg.codes.forEach(cd=>{h+=`<h4>Mã đề ${cd.code}</h4><table><tr><th>Câu</th><th>Dạng</th><th>Đáp án</th></tr>`+cd.qs.map((q,i)=>`<tr><td>${i+1}</td><td>${TY[q.type]}</td><td>${q.type==='mc'?'ABCD'[q.key]:q.type==='tf'?q.keys.map((v,k)=>'abcd'[k]+':'+(v?'Đ':'S')).join(' '):q.type==='sa'?esc(q.ans.join(' | ')):'Chấm theo rubric'}</td></tr>`).join('')+'</table>'});
  save2('dap-an-cac-ma-de.html',h+'</body></html>','text/html')}
-function csv(rows){return '\ufeff'+rows.map(r=>r.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\n')}
+const csv=rows=>'\ufeff'+rows.map(r=>r.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(',')).join('\n');
 let MISS=0;const lvk=x=>LV[x]?x:(MISS++,'TH');
 function bulkTag(){const a=+$('#b1').value,b=+$('#b2').value,t=$('#bt').value.trim(),n=$('#bn').value.trim();if(!a||!b||!(t||n)){alert('Nhập khoảng câu và chủ đề hoặc nội dung.');return}D.bank.forEach(q=>{if(q.no>=a&&q.no<=b){if(t)q.tag=t;if(n)q.nd=n}});save();show()}
 async function aiTag(){if(!confirm('Nội dung các câu hỏi (đề và hướng dẫn chấm) sẽ được gửi tới dịch vụ AI để gợi ý chủ đề và yêu cầu cần đạt. Chỉ làm khi đề không còn cần giữ bí mật hoặc quy chế cho phép. Tiếp tục?'))return;
@@ -216,7 +216,7 @@ function expTpl(){const c=D.cfg,doc=`<html xmlns:o="urn:schemas-microsoft-com:of
 /* ---------- Kết nối máy chủ, nhập danh sách ---------- */
 async function api(a,p){try{const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({a,...p})});const text=await r.text();try{return JSON.parse(text);}catch(e1){try{const f=text.indexOf('{'),l=text.lastIndexOf('}');if(f!==-1&&l!==-1&&l>f)return JSON.parse(text.substring(f,l+1));}catch(e2){}console.error("Phản hồi không phải JSON:",text);if(text.includes("<!DOCTYPE html>")||text.includes("<html")){return{ok:false,err:"Lỗi phân quyền Web App! Hãy chọn 'Who has access' là 'Anyone' trong Google Apps Script."};}return{ok:false,err:"Phản hồi máy chủ không hợp lệ: "+text.slice(0,80)};}}catch(e){return{ok:false,err:'Không kết nối được máy chủ'}}}
 function AK(){let k=sessionStorage.getItem('ak');if(!k){k=prompt('Mã quản trị:')||'';sessionStorage.setItem('ak',k)}return k}
-async function pub(){const r=await api('publish',{key:AK(),cfg:D.cfg,codes:D.cfg.codes,roster:D.roster,gcfg:{emax:D.cfg.emax,thr:D.cfg.thr,gr:D.gr},imgs:D.imgs});if(!r.ok)sessionStorage.removeItem('ak');alert(r.ok?`Đã đăng ${r.n} mã đề và ${r.hs} thí sinh.`:r.err)}
+async function pub(){const r=await api('publish',{key:AK(),cfg:D.cfg,codes:D.cfg.codes,keys:D.cfg.codes.map(c=>({code:c.code,qs:c.qs.map(q=>({type:q.type,key:q.key,keys:q.keys,ans:q.ans}))})),roster:D.roster,gcfg:{emax:D.cfg.emax,thr:D.cfg.thr,gr:D.gr},imgs:D.imgs});if(!r.ok)sessionStorage.removeItem('ak');alert(r.ok?`Đã đăng ${r.n} mã đề và ${r.hs} thí sinh.`:r.err)}
 async function refresh(){const r=await api('stats',{key:AK()});if(!r.ok){sessionStorage.removeItem('ak');alert(r.err);return}D.subs=r.subs;show()}
 function go2(t){tab=t;if(t==='gs'&&API_URL)refresh();else if(t==='gc')gcLoad();else show()}
 function grd(s,sbd){return s.g||{...grade(s.code,s.ans),...locEss(s,sbd)}}
@@ -324,7 +324,7 @@ async function fin(){if(S.fin)return;S.fin=1;clearInterval(T);
 function result(){const g=S.g||grade(S.code,S.ans);$('#app').innerHTML=`<div class="c" style="max-width:520px;margin:30px auto;text-align:center"><h2>Bài làm đã được nộp</h2><p class="mu">${esc(S.sbd)} · Mã đề ${S.code}</p><div style="font-size:2.4rem;font-weight:800;color:var(--pr)">${g.p.toFixed(2)}<span class="mu" style="font-size:1rem"> /10</span></div><p class="sm">Điểm phần trắc nghiệm, đúng/sai, trả lời ngắn: ${(+g.s.toFixed(2))}/${g.mx}${g.es?`. Có ${g.es} câu tự luận chờ giáo viên chấm.`:''}</p><button onclick="S=null;login()">Thoát</button></div>`}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&S&&!S.done&&mode==='hs'){S.viol++;save()}});
 function mj(){if(window.renderMathInElement)renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false})}
-let _mt;new MutationObserver(()=>{clearTimeout(_mt);_mt=setTimeout(mj,40)}).observe($('#app'),{childList:true,subtree:true});window.addEventListener('load',mj);
+let _t;new MutationObserver(()=>{clearTimeout(_t);_mt=setTimeout(mj,40)}).observe($('#app'),{childList:true,subtree:true});window.addEventListener('load',mj);
 if(/[?&](thi|cham)/.test(location.search)){mode=/[?&]cham/.test(location.search)?'gv':'hs';['#r1','#r2','#r3'].forEach(x=>$(x).style.display='none')}
 show();
 </script></body></html>
