@@ -39,10 +39,11 @@ pre{white-space:pre-wrap;margin:0;font:inherit}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-const API_URL='https://script.google.com/macros/s/AKfycbwDDQjGLSoDtvJJ_OTkfesOp_4jg2huRbUtvbEfPH6WCWLHA1UV8ZCxulSnR3_ILSOjug/exec';/* DÁN URL Web App Apps Script vào đây để thi nhiều máy; để trống = chạy thử trên 1 trình duyệt */
+const API_URL='https://script.google.com/macros/s/AKfycbwKTZz16rFXXZKNSv-oSpasukpFPlaWVIJ0fDWidG91aU181z4BrJfytEC_rKmpqz98w/exec';
 const LV={NB:'Nhận biết',TH:'Thông hiểu',VD:'Vận dụng',VDC:'VD cao'},TY={mc:'Nhiều lựa chọn',tf:'Đúng/Sai',sa:'Trả lời ngắn',essay:'Tự luận'};
 const ER=s=>esc(s).replace(/⟪IMG:(\w+)⟫/g,(m,id)=>D.imgs&&D.imgs[id]?`<img src="${D.imgs[id]}" style="max-width:100%;vertical-align:middle">`:'[hình]');
-const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $=s=>document.querySelector(s)||{style:{},classList:{add(){},remove(){}},innerHTML:''};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const SAMPLE=[
 {type:'mc',level:'NB',tag:'Hàm số',stem:'Giá trị nhỏ nhất của $f(x)=x^2-4x+3$ là',opt:{A:'−1',B:'0',C:'1',D:'3'},ans:['A'],sol:'f(x)=(x−2)²−1.'},
 {type:'mc',level:'TH',tag:'Hàm số',stem:'Đạo hàm của $y=x^3$ là',opt:{A:'$x^2$',B:'$3x^2$',C:'$3x$',D:'$x^3$'},ans:['B'],sol:''},
@@ -53,12 +54,11 @@ const SAMPLE=[
 {type:'sa',level:'TH',tag:'Thống kê',stem:'Trung bình cộng của 5, 7, 9, 11, 13 là',ans:['9'],sol:''},
 {type:'essay',level:'VD',tag:'Xác suất',stem:'Hộp I có 6 bi đỏ, 4 bi vàng. Lấy 1 bi bỏ sang hộp II (7 đỏ, 3 vàng) rồi lấy 1 bi từ hộp II. Tính xác suất bi lấy ra là bi đỏ.',sol:'Rubric: lập sơ đồ 0,5; công thức xác suất toàn phần 1,0; kết quả 0,5.'}];
 const ROSTER='10001,Nguyễn Văn An,12A1\n10002,Trần Thị Bình,12A1\n10003,Lê Minh Châu,12A2\n10004,Phạm Quốc Dũng,12A2\n10005,Hoàng Thu Hà,12A3';
-let D=load();D.gr=D.gr||[];D.grades=D.grades||{};D.cfg.emax=D.cfg.emax||2;D.cfg.pts=D.cfg.pts||{mc:3,tf:2,sa:2,essay:3};D.imgs=D.imgs||{};D.cfg.thr=D.cfg.thr??1;let OV=[],ONL=false,GV=null;let S=null,T=null,tab='bank',mode='ad';
 function init(){return{bank:SAMPLE.map((q,i)=>({...q,no:i+1})),cfg:{name:'Kỳ thi thử Toán',mon:'Toán',min:30,n:4,codes:[]},roster:ROSTER,subs:{},spec:{}}}
-function load(){try{const d=JSON.parse(localStorage.getItem('dgnl2'));if(d&&d.bank)return d}catch(e){}return init()}
-function save(){try{localStorage.setItem('dgnl2',JSON.stringify(D))}catch(e){if(!window._qa){window._qa=1;alert('Bộ nhớ trình duyệt đã đầy, dữ liệu mới có thể không được lưu. Hãy xóa bớt đề hoặc hình cũ.')}}push()}
+function load(){try{const d=JSON.parse(localStorage.getItem('dgnl2'));if(d&&Array.isArray(d.bank)&&d.cfg)return d}catch(e){}return init()}
+let D=load();D.gr=D.gr||[];D.grades=D.grades||{};D.cfg.emax=D.cfg.emax||2;D.cfg.pts=D.cfg.pts||{mc:3,tf:2,sa:2,essay:3};D.imgs=D.imgs||{};D.cfg.thr=D.cfg.thr??1;let OV=[],ONL=false,GV=null;let S=null,T=null,tab='bank',mode='ad';
+function save(){try{localStorage.setItem('dgnl2',JSON.stringify(D))}catch(e){if(!window._qa){window._qa=1;alert('Bộ nhớ trình duyệt đã đầy.')}}push()}
 const cl=s=>String(s).replace(/[⟦⟧]/g,'').trim();
-/* ---------- Bóc tách đề (cùng quy ước OLM/CV7991) ---------- */
 function opts(t){const re=/(?:^|\s)⟦?([A-D])(?:\.⟧?|⟧\.)(?=\s|$)/g;let m,p=[],w='A';while((m=re.exec(t))){if(m[1]===w){p.push([m.index,m[1],m[0].includes('⟦')]);w=String.fromCharCode(w.charCodeAt(0)+1)}}
  if(p.length<4)return null;const o={},a=[];p.forEach(([i,k,u],n)=>{const e=p[n+1]?p[n+1][0]:t.length;o[k]=cl(t.slice(i,e).replace(/^\s*⟦?[A-D](\.⟧?|⟧\.)/,''));if(u)a.push(k)});return{stem:t.slice(0,p[0][0]),opt:o,ans:a}}
 function parseLines(L){const out=[];let c=null,hd=false,G=null,TOP='';
@@ -137,7 +137,6 @@ async function importFile(ev){const f=ev.target.files[0];if(!f)return;let q=[],m
   else{alert('Chỉ nhận .docx hoặc .json');return}}catch(e){alert('Không đọc được file: '+e.message);return}
  if(!q.length){alert('Không tìm thấy câu hỏi nào theo định dạng mẫu.');return}
  const sel=$('#rep')&&$('#rep').checked;const base=sel?[]:D.bank;D.bank=[...base,...q].map((x,i)=>({...x,no:i+1}));D.cfg.codes=[];const U=new Set([...JSON.stringify(D.bank).matchAll(/⟪IMG:(\w+)⟫/g)].map(m=>m[1]));Object.keys(D.imgs).forEach(k=>U.has(k)||delete D.imgs[k]);save();show();if(IMGSKIP.length)alert(`Có ${IMGSKIP.length} hình chưa hiển thị được (thường là công thức MathType dạng .wmf/.emf). Hãy nhập đề bằng dgnl_import.py (tự chuyển sang PNG) rồi tải file .json lên, hoặc chèn lại công thức bằng Equation của Word.`)}
-/* ---------- Sinh mã đề ---------- */
 const rng=s=>{return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const shuf=(a,r)=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function gen(){const n=+$('#nc').value||1;D.cfg.n=n;D.cfg.codes=[];
@@ -152,7 +151,6 @@ function grade(code,ans){const cd=D.cfg.codes.find(c=>c.code==code);let s=0,mx=0
   if(q.type==='tf'&&Array.isArray(a)){const n=a.filter((v,j)=>v===q.keys[j]).length;s+=[0,.1,.25,.5,1][n]||0}
   if(q.type==='sa'&&a){const f=x=>String(x).trim().replace(',','.').replace(/\s+/g,'').toLowerCase();if(q.ans.some(k=>f(k)===f(a)))s++}});
  return{s,mx,es,p:mx?s/mx*10:0}}
-/* ---------- Xuất file ---------- */
 async function save2(name,data,type){const b=new Blob([data],{type});
  if(typeof claude!=='undefined'&&claude.use){const d=await claude.use('downloads');if(d){try{await d.save({filename:name,data:b})}catch(e){if(e&&e.code!=='declined')alert('Không lưu được: '+(e.message||e.code))}return}}
  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
@@ -188,7 +186,6 @@ function rows(){return D.roster.split('\n').map(l=>l.split(',').map(s=>s.trim())
 function expKQ(){const R=[['SBD','Họ tên','Lớp','Mã đề','Điểm tự động','Tối đa','Điểm /10','Điểm tự luận','Số lần vi phạm','Trạng thái','Giờ nộp']];
  rows().forEach(r=>{const s=D.subs[r.sbd];if(!s)return R.push([r.sbd,r.ten,r.lop,'','','','','','','Vắng thi',''],);const g=s.done?grd(s,r.sbd):{s:'',mx:'',p:'',es:''};R.push([r.sbd,r.ten,r.lop,s.code,g.s,g.mx,s.done?(tot(g)==null?'':tot(g).toFixed(2)):'',g.es?(g.pe>0?'Chờ chấm':g.et):'',s.viol,s.done?'Đã nộp':'Đang thi/chưa nộp',s.end?new Date(s.end).toLocaleString('vi-VN'):''])});
  save2('ket-qua-ky-thi.csv',csv(R),'text/csv')}
-/* ---------- Ma trận & bản đặc tả theo mẫu Công văn 7991 ---------- */
 const TT3=['mc','tf','sa','essay'],LN=['Biết','Hiểu','Vận dụng'],TN={mc:'Nhiều lựa chọn',tf:'“Đúng – Sai”',sa:'Trả lời ngắn',essay:'Tự luận'};
 const fN=x=>(Number.isInteger(Math.round(x*100)/10)?x.toFixed(1):x.toFixed(2)).replace('.',','),fP=x=>String(Math.round(x*10)/10).replace('.',',');
 function tpl(){MISS=0;const E=[],cnt={mc:0,tf:0,sa:0,essay:0};
@@ -213,7 +210,6 @@ function tplHtml(){const X=tpl(),sel=(E,t,l)=>E.filter(e=>e.t===t&&(l==null||e.l
   return `<tr>${l?'':`<td rowspan="3">${i+1}</td>`}${l||!X.run[i]?'':`<td rowspan="${3*X.run[i]}"><b>${esc(g.cd)}</b></td>`}${l?'':`<td rowspan="3" class="l">${esc(g.nd)}</td>`}<td class="l">- ${LN[l]}: ${esc(yc)||'…'}</td>${TT3.map(t=>[0,1,2].map(k=>`<td>${k===l?nb(sel(g.E,t,l),1):''}</td>`).join('')).join('')}</tr>`}).join('')).join('');
  return `<p><b>1. MA TRẬN ĐỀ KIỂM TRA</b></p><table>${head(0)}${body1}${foot(0)}</table><p><b>2. BẢN ĐẶC TẢ ĐỀ KIỂM TRA</b></p><table>${head(1)}${body2}${foot(1)}</table>`}
 function expTpl(){const c=D.cfg,doc=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Ma trận</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]--><style>@page Section1{size:841.9pt 595.3pt;mso-page-orientation:landscape;margin:40pt}div.Section1{page:Section1}body{font:11pt "Times New Roman"}table{border-collapse:collapse;width:100%}td,th{border:1px solid #000;padding:2px 4px;text-align:center;vertical-align:middle;font-size:10pt}td.l{text-align:left}</style></head><body><div class="Section1"><p align="center"><b>${esc(c.name)} · Môn ${esc(c.mon)}</b></p>${tplHtml()}</div></body></html>`;save2('ma-tran-dac-ta-CV7991.doc',doc,'application/msword')}
-/* ---------- Kết nối máy chủ, nhập danh sách ---------- */
 async function api(a,p){try{const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({a,...p})});const text=await r.text();try{return JSON.parse(text);}catch(e1){try{const f=text.indexOf('{'),l=text.lastIndexOf('}');if(f!==-1&&l!==-1&&l>f)return JSON.parse(text.substring(f,l+1));}catch(e2){}console.error("Phản hồi không phải JSON:",text);if(text.includes("<!DOCTYPE html>")||text.includes("<html")){return{ok:false,err:"Lỗi phân quyền Web App! Hãy chọn 'Who has access' là 'Anyone' trong Google Apps Script."};}return{ok:false,err:"Phản hồi máy chủ không hợp lệ: "+text.slice(0,80)};}}catch(e){return{ok:false,err:'Không kết nối được máy chủ'}}}
 function AK(){let k=sessionStorage.getItem('ak');if(!k){k=prompt('Mã quản trị:')||'';sessionStorage.setItem('ak',k)}return k}
 async function pub(){const r=await api('publish',{key:AK(),cfg:D.cfg,codes:D.cfg.codes,keys:D.cfg.codes.map(c=>({code:c.code,qs:c.qs.map(q=>({type:q.type,key:q.key,keys:q.keys,ans:q.ans}))})),roster:D.roster,gcfg:{emax:D.cfg.emax,thr:D.cfg.thr,gr:D.gr},imgs:D.imgs});if(!r.ok)sessionStorage.removeItem('ak');alert(r.ok?`Đã đăng ${r.n} mã đề và ${r.hs} thí sinh.`:r.err)}
@@ -235,7 +231,6 @@ async function rosterFile(ev){const f=ev.target.files[0];if(!f)return;let A;
  if(h.some(x=>/sbd|số báo danh|họ|tên|lớp/i.test(x))){const f2=re=>h.map((x,i)=>re.test(x)?i:-1).filter(i=>i>=0);c={s:f2(/sbd|số báo danh|mã/i),n:f2(/họ|tên/i),l:f2(/lớp/i)};A.shift();if(!c.s.length)c.s=[0]}
  const g=(r,a)=>a.map(i=>r[i]||'').join(' ').trim();
  D.roster=A.map(r=>[g(r,c.s),g(r,c.n),g(r,c.l)].join(',')).filter(l=>l[0]!==',').join('\n');save();show()}
-/* ---------- Chấm tự luận 2 vòng độc lập ---------- */
 const cls=t=>String(t||'').split(/[,;]/).map(x=>x.trim()).filter(Boolean);
 function fin3(a,b,c,t){if(c!=null)return{f:c,st:'Vòng 3'};if(a==null||b==null)return{f:null,st:'Chờ chấm'};return Math.abs(a-b)>t?{f:null,st:'Lệch > '+t}:{f:(a+b)/2,st:'Đạt'}}
 const gsc=(sbd,no,rd)=>{const x=D.grades[sbd+'|'+no+'|'+rd];return x?x.score:null};
@@ -275,13 +270,21 @@ async function gvSave(){const t=GV.tasks[GV.i],b=t.items.map((it,k)=>({it,s:$('#
  if(b.some(x=>x.s===''||+x.s<0||+x.s>GV.emax)){alert(`Nhập điểm từ 0 đến ${GV.emax} cho mọi câu.`);return}
  const rs=await Promise.all(b.map(x=>rpcG('g_save',{pin:GV.pin,sbd:t.id,no:x.it.no,score:+x.s,note:x.n}))),bad=rs.find(r=>!r.ok);if(bad){alert(bad.err);return}
  b.forEach(x=>x.it.mine={score:+x.s,note:x.n});if(GV.i<GV.tasks.length-1)GV.i++;gvMain()}
-/* ---------- Giao diện quản trị ---------- */
 function role(r){mode=r;if(r==='hs'&&S&&!S.done){}show()}
-function show(){$('#r1').className=mode==='ad'?'on':'';$('#r2').className=mode==='hs'?'on':'';$('#r3').className=mode==='gv'?'on':'';clearInterval(T);mode==='ad'?admin():mode==='gv'?gvView():(S&&!S.done?exam():login())}
+function show(){
+  try{
+    const r1=$('#r1'),r2=$('#r2'),r3=$('#r3');
+    if(r1)r1.className=mode==='ad'?'on':'';
+    if(r2)r2.className=mode==='hs'?'on':'';
+    if(r3)r3.className=mode==='gv'?'on':'';
+    clearInterval(T);
+    mode==='ad'?admin():mode==='gv'?gvView():(S&&!S.done?exam():login());
+  }catch(e){console.error(e);$('#app').innerHTML=`<div class="c" style="color:red">Lỗi hiển thị: ${esc(e.message)}</div>`}
+}
 function admin(){const tabs=[['bank','1. Ngân hàng đề'],['mt','2. Ma trận đặc tả'],['cd','3. Mã đề & xuất offline'],['gs','4. Giám sát & kết quả'],['gc','5. Chấm tự luận']];
  let h=`<div class="c" style="display:flex;gap:6px;flex-wrap:wrap">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="go2('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
  if(tab==='bank')h+=`<div class="c"><h2>Nhập đề gốc</h2><p class="sm mu">Tải file Word theo mẫu OLM/CV7991 (đáp án gạch chân, thẻ [NB] [TH] [VD] [TF] [HDG], trả lời ngắn dạng [[đáp án]]) hoặc file .json xuất từ <code>dgnl_import.py</code> (giữ công thức, ảnh). PDF cần chuyển sang Word trước.</p><input type="file" accept=".docx,.json,.pdf" onchange="importFile(event)"> <label class="sm"><input type="checkbox" id="rep"> thay toàn bộ ngân hàng</label>
- <div class="al sm" style="margin-top:10px">Nhập trực tiếp từ Word: lấy chữ, gạch chân đáp án, công thức Equation (đổi sang LaTeX), hình PNG/JPG (được nén tự động). Công thức MathType và hình .wmf/.emf cần nhập qua <code>dgnl_import.py</code> rồi tải file .json lên.</div></div>
+ <div class="al sm" style="margin-top:10px">Nhập trực tiếp từ Word: lấy chữ, gạch chân đáp án, công thức Equation (đổi sang LaTeX), hình PNG/JPG (được nén tự động). Công thức MathType và hình .wmf/.emf cần nhập qua <code>dgnl_import.py</code> rồi tải file .json lên, hoặc chèn lại công thức bằng Equation của Word.</div></div>
  <div class="c"><h2>Ngân hàng: ${D.bank.length} câu</h2><p class="sm">Gán nhanh: câu <input id="b1" type="number" style="width:64px"> đến <input id="b2" type="number" style="width:64px"> → chủ đề <input id="bt" size="14"> nội dung <input id="bn" size="14"> <button onclick="bulkTag()">Gán</button> ${API_URL?'<button class="p" onclick="aiTag()">Gợi ý chủ đề + yêu cầu cần đạt bằng AI</button>':''}</p><div class="tw"><table><tr><th>#</th><th>Dạng</th><th>Mức</th><th>Chủ đề/Chương</th><th>Nội dung / đơn vị kiến thức</th><th>Yêu cầu cần đạt</th><th>Nội dung</th><th>Đáp án</th></tr>${D.bank.map((q,i)=>`<tr><td>${q.no}</td><td>${TY[q.type]}</td><td>${LV[q.level]||'—'}</td><td><input size="12" value="${esc(q.tag)}" onchange="D.bank[${i}].tag=this.value;save()"></td><td><input size="16" value="${esc(q.nd||'')}" onchange="D.bank[${i}].nd=this.value;save()"></td><td><input size="22" value="${esc(q.yc||'')}" onchange="D.bank[${i}].yc=this.value;save()"></td><td>${esc(String(q.stem).replace(/⟪IMG:\w+⟫/g,'[hình]').slice(0,110))}</td><td>${q.type==='tf'?q.st.map(s=>s.k+':'+(s.ok?'Đ':'S')).join(' '):esc((q.ans||[]).join('/'))||'—'}</td></tr>`).join('')}</table></div>
  <button onclick="if(confirm('Xóa toàn bộ ngân hàng?')){D.bank=[];D.cfg.codes=[];save();show()}">Xóa ngân hàng</button> <button onclick="D=init();save();show()">Nạp lại dữ liệu mẫu</button></div>`;
  if(tab==='mt'){const P=D.cfg.pts,sm=TT3.reduce((a,t)=>a+P[t],0);
@@ -296,7 +299,6 @@ function admin(){const tabs=[['bank','1. Ngân hàng đề'],['mt','2. Ma trận
   <div class="c"><div class="g"><div class="k"><b>${R.length}</b>Tổng danh sách</div><div class="k"><b>${dt.length}</b>Đã vào thi</div><div class="k"><b>${nop.length}</b>Đã nộp bài</div><div class="k"><b>${R.length-dt.length}</b>Vắng thi</div><div class="k"><b>${vp.length}</b>Có vi phạm</div></div></div>
   <div class="c"><div class="tw"><table><tr><th>SBD</th><th>Họ tên</th><th>Lớp</th><th>Mã đề</th><th>Điểm /10</th><th>Vi phạm</th><th>Trạng thái</th></tr>${R.map(r=>{const s=D.subs[r.sbd],g=s&&s.done?grd(s,r.sbd):null;return `<tr><td>${esc(r.sbd)}</td><td>${esc(r.ten)}</td><td>${esc(r.lop)}</td><td>${s?s.code:''}</td><td>${g?(tot(g)==null?'<span class="bd w">chờ tự luận</span>':tot(g).toFixed(2)):''}</td><td>${s&&s.viol?'<span class="bd w">'+s.viol+' lần</span>':''}</td><td>${s?(s.done?'Đã nộp':'Đang thi'):'Vắng'}</td></tr>`}).join('')}</table></div><p><button class="p" onclick="expKQ()">Xuất kết quả (CSV)</button> <button onclick="if(confirm('Xóa toàn bộ bài làm?')){D.subs={};save();show()}">Xóa dữ liệu bài làm</button></p></div>`}
  if(tab==='gc')h+=gcTab();$('#app').innerHTML=h}
-/* ---------- Phòng thi thí sinh ---------- */
 function login(){const c=D.cfg;$('#app').innerHTML=`<div class="c" style="max-width:460px;margin:30px auto"><h2>${API_URL?'Phòng thi trực tuyến':esc(c.name)}</h2>${API_URL?'':`<p class="mu">Môn ${esc(c.mon)} · ${c.min} phút</p>`}${(API_URL||c.codes.length)?`<label class="sm">Số báo danh<br><input id="sb" placeholder="VD: 10001" style="width:100%"></label><p><button class="p" onclick="enter()">Vào phòng thi</button></p><p class="sm mu">Thử với SBD 10001 đến 10005. Trong lúc thi, rời tab hoặc chuyển cửa sổ sẽ bị ghi nhận vi phạm.</p>`:'<div class="al">Chưa có mã đề. Quản trị viên cần sinh mã đề trước.</div>'}</div>`}
 function enterLocal(sbd){const r=rows().find(x=>x.sbd===sbd);if(!r){alert('SBD không có trong danh sách.');return}
  const idx=rows().indexOf(r);let s=D.subs[sbd];if(s&&s.done){S=s;S.sbd=sbd;return result()}
@@ -325,6 +327,6 @@ function result(){const g=S.g||grade(S.code,S.ans);$('#app').innerHTML=`<div cla
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&S&&!S.done&&mode==='hs'){S.viol++;save()}});
 function mj(){if(window.renderMathInElement)renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false})}
 let _t;new MutationObserver(()=>{clearTimeout(_t);_mt=setTimeout(mj,40)}).observe($('#app'),{childList:true,subtree:true});window.addEventListener('load',mj);
-if(/[?&](thi|cham)/.test(location.search)){mode=/[?&]cham/.test(location.search)?'gv':'hs';['#r1','#r2','#r3'].forEach(x=>$(x).style.display='none')}
+if(/[?&](thi|cham)/.test(location.search)){mode=/[?&]cham/.test(location.search)?'gv':'hs';['#r1','#r2','#r3'].forEach(x=>{const el=$(x);if(el.style)el.style.display='none'})}
 show();
 </script></body></html>
