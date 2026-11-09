@@ -26,7 +26,7 @@ textarea{width:100%;min-height:80px}
 .pl{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.pl button{padding:6px 0}.pl .d{background:var(--ps);border-color:var(--pr)}.pl .f{background:var(--ws);border-color:var(--wa)}.pl .u{outline:2px solid var(--pr)}
 .tr{display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--bd);padding:7px 0}.tr span{flex:1}
 pre{white-space:pre-wrap;margin:0;font:inherit}
-#tm{font:700 1.2rem ui-monospace,monospace;padding:3px 10px;border-radius:9px;background:var(--ps);color:var(--pr)}
+#tm{font:700 1.2rem ui-monospace,monospace;padding:3px 10px;border-radius:99px;background:var(--ps);color:var(--pr)}
 .al{background:var(--ws);color:var(--wa);border-radius:8px;padding:8px 10px;margin-bottom:10px}
 .sub-bar{background:var(--ps);padding:6px 12px;border-radius:8px;display:flex;align-items:center;gap:10px;margin-bottom:12px}
 </style><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
@@ -60,8 +60,9 @@ const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>(
 
 const SAMPLE=[
 {type:'mc',level:'NB',tag:'Hàm số',stem:'Giá trị nhỏ nhất của $f(x)=x^2-4x+3$ là',opt:{A:'−1',B:'0',C:'1',D:'3'},ans:['A'],sol:'f(x)=(x−2)²−1.'},
-{type:'mc',level:'TH',tag:'Hàm số',stem:'Đạo hàm của $y=x^3$ là',opt:{A:'$x^2$',B:'$3x^2$',C:'$3x$',D:'$x^3$'},ans:['B'],sol:''},
-{type:'sa',level:'VD',tag:'Đại số',stem:'Tích các nghiệm của $x^2-7x+10=0$ là',ans:['10'],sol:'Viète.'}
+{type:'tf',level:'TH',tag:'Hàm số',stem:'Cho $f(x)=x^3-3x$.',st:[{k:'a',t:'$f\'(x)=3x^2-3$.',lv:'NB',ok:true},{k:'b',t:'Hàm số đồng biến trên ℝ.',lv:'TH',ok:false},{k:'c',t:'Cực đại tại $x=-1$.',lv:'TH',ok:true},{k:'d',t:'$f(2)=3$.',lv:'VD',ok:false}],sol:''},
+{type:'sa',level:'VD',tag:'Đại số',stem:'Tích các nghiệm của $x^2-7x+10=0$ là',ans:['10'],sol:'Viète.'},
+{type:'essay',level:'VD',tag:'Xác suất',stem:'Trình bày suy luận giải bài toán xác suất toàn phần...',sol:''}
 ];
 const ROSTER='10001,Nguyễn Văn An,12A1\n10002,Trần Thị Bình,12A1\n10003,Lê Minh Châu,12A2';
 
@@ -149,7 +150,7 @@ async function docxLines(f){const z=await JSZip.loadAsync(await f.arrayBuffer())
  return L}
 async function importFile(ev){const f=ev.target.files[0];if(!f)return;let q=[];
  try{if(/\.docx$/i.test(f.name))q=parseLines(await docxLines(f));
-  else if(/\.json$/i.test(f.name)){const d=JSON.parse(await f.text());Object.assign(D.imgs=D.imgs||{},d.imgs||{});q=(d.items||[]).map(i=>({type:i.type,level:i.level,tag:'',stem:i.stem,opt:i.options,ans:i.answer,pass:'',sol:i.solution}))}
+  else if(/\.json$/i.test(f.name)){const d=JSON.parse(await f.text());Object.assign(D.imgs=D.imgs||{},d.imgs||{});q=(d.items||[]).map(i=>({type:i.type,level:i.level,tag:'',stem:i.stem,opt:i.options,ans:i.answer,pass:'',sol:i.solution,st:i.statements}))}
   else{alert('Chỉ nhận .docx hoặc .json');return}}catch(e){alert('Lỗi đọc file: '+e.message);return}
  if(!q.length){alert('Không tìm thấy câu hỏi.');return}
  D.bank=q.map((x,i)=>({...x,no:i+1}));D.cfg.codes=[];save();show()}
@@ -160,7 +161,7 @@ function gen(){const n=+$('#nc').value||1;D.cfg.n=n;D.cfg.codes=[];
  for(let i=0;i<n;i++){const code=101+i,r=rng(code*7919+D.bank.length);let qs=[];
   ['mc','tf','sa','essay'].forEach(t=>qs.push(...shuf(D.bank.filter(q=>q.type===t),r)));
   qs=qs.map(q=>{const c={...q};if(q.type==='mc'){const ks=shuf(Object.keys(q.opt),r);c.ov=ks.map(k=>q.opt[k]);c.key=ks.indexOf(q.ans[0])}
-   if(q.type==='tf'){const s=shuf(q.st,r);c.sv=s.map(x=>x.t);c.keys=s.map(x=>!!x.ok)}return c});
+   if(q.type==='tf'){const s=shuf(q.st||[],r);c.sv=s.map(x=>x.t);c.keys=s.map(x=>!!x.ok)}return c});
   D.cfg.codes.push({code,qs})}save();show()}
 
 async function save2(name,data,type){const b=new Blob([data],{type}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),1000)}
@@ -182,14 +183,14 @@ async function pub(){
 async function refresh(){const r=await api('stats',{key:AK()});if(!r.ok){alert(r.err);return}D.subs=r.subs;show()}
 function go2(t){tab=t;if(t==='gs'&&API_URL)refresh();else show()}
 
-let _t;function push(){if(!API_URL||!S||S.done||mode!=='hs')return;clearTimeout(_t);_t=setTimeout(()=>api('save',{sbd:S.sbd,subject:currentSub,token:S.token,ans:S.ans,viol:S.viol}),2500)}
+let _t;function push(){if(!API_URL||!S||S.done||mode!=='hs')return;clearTimeout(_t);_t=setTimeout(()=>api('save',{sbd:S.sbd,subject:currentSub,token:S.token,ans:S.ans,viol:S.viol,qi:S.qi}),2500)}
 
 async function enter(){
   const sbd=$('#sb').value.trim();if(!sbd)return;
   const r=await api('login',{sbd,subject:currentSub});
   if(!r.ok){alert(r.err);return}
   D.imgs=Object.assign(D.imgs||{},r.imgs||{});
-  S={sbd,name:r.name,code:r.code,cd:r.cd,ans:r.ans||{},viol:r.viol||0,start:r.start,endAt:r.endAt,off:r.now-Date.now(),done:r.done,qi:r.qi||0,token:r.token,g:r.g,title:r.title};
+  S={sbd,name:r.name,code:r.code,cd:r.cd,ans:r.ans||{},flag:{},viol:r.viol||0,start:r.start,endAt:r.endAt,off:r.now-Date.now(),done:r.done,qi:r.qi||0,token:r.token,g:r.g,title:r.title};
   S.done?result():exam();
 }
 
@@ -220,14 +221,71 @@ function admin(){
 
 function login(){$('#app').innerHTML=`<div class="c" style="max-width:460px;margin:30px auto"><h2>Phòng thi trực tuyến (${currentSub})</h2><label class="sm">Số báo danh<br><input id="sb" placeholder="VD: 10001" style="width:100%"></label><p><button class="p" onclick="enter()">Vào phòng thi</button></p></div>`}
 
-function exam(){const cd=S.cd,q=cd.qs[S.qi],a=S.ans[S.qi];let b='';
- if(q.type==='mc')b=q.ov.map((o,k)=>`<button class="o ${a===k?'on':''}" onclick="ans(${k})"><b>${'ABCD'[k]}.</b> ${ER(o)}</button>`).join('');
- $('#app').innerHTML=`<div class="c" style="display:flex;gap:10px;align-items:center"><div style="flex:1"><b>${esc(S.title)} · Môn ${currentSub}</b> · Mã ${S.code}<div class="sm mu">${esc(S.name)}</div></div><div id="tm">--:--</div><button class="p" onclick="submit()">Nộp bài</button></div>
- <div class="ex"><div class="c"><div class="sm mu">Câu ${S.qi+1}/${cd.qs.length}</div><p>${ER(q.stem)}</p>${b}
- <p><button onclick="S.qi=Math.max(0,S.qi-1);exam()">← Trước</button> <button onclick="S.qi=Math.min(${cd.qs.length-1},S.qi+1);exam()">Sau →</button></p></div></div>`;
- clearInterval(T);T=setInterval(tick,500);tick()}
+// --- HÀM XỬ LÝ LÀM BÀI ĐÃ ĐƯỢC BỔ SUNG ĐẦY ĐỦ CÁC DẠNG CÂU HỎI ---
+function exam(){
+  const cd=S.cd, q=cd.qs[S.qi], a=S.ans[S.qi]; 
+  let b='';
 
-function ans(v){S.ans[S.qi]=v;push();exam()}
+  // 1. Dạng Trắc nghiệm 4 phương án
+  if(q.type==='mc') {
+    b = q.ov.map((o,k)=>`<button class="o ${a===k?'on':''}" onclick="ans(${k})"><b>${'ABCD'[k]}.</b> ${ER(o)}</button>`).join('');
+  }
+  // 2. Dạng Đúng / Sai (a, b, c, d)
+  if(q.type==='tf') {
+    b = (q.sv||[]).map((o,k)=>`
+      <div class="tr">
+        <span><b>${'abcd'[k]})</b> ${ER(o)}</span>
+        <button class="${a && a[k]===true?'on':''}" onclick="tf(${k},true)">Đúng</button>
+        <button class="${a && a[k]===false?'on':''}" onclick="tf(${k},false)">Sai</button>
+      </div>`).join('');
+  }
+  // 3. Dạng Trả lời ngắn
+  if(q.type==='sa') {
+    b = `<input value="${esc(a||'')}" placeholder="Nhập câu trả lời ngắn..." oninput="ans(this.value,1)" style="width:100%;max-width:320px;margin-top:10px">`;
+  }
+  // 4. Dạng Tự luận
+  if(q.type==='essay') {
+    b = `<textarea style="min-height:160px;margin-top:10px" oninput="ans(this.value,1)" placeholder="Trình bày chi tiết lời giải tự luận...">${esc(a||'')}</textarea>`;
+  }
+
+  // Danh sách nút bấm chọn nhanh câu hỏi (Phần bảng bên phải)
+  const pl = cd.qs.map((x,i)=>{
+    const v = S.ans[i];
+    const done = Array.isArray(v) ? v.some(z=>z!=null) : (v!==undefined && v!=='');
+    return `<button class="${done?'d':''} ${S.flag?.[i]?'f':''} ${i===S.qi?'u':''}" onclick="S.qi=${i};save();exam()">${i+1}</button>`;
+  }).join('');
+
+  $('#app').innerHTML=`
+    <div class="c" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1"><b>${esc(S.title||'Bài thi')} · Môn ${currentSub}</b> · Mã đề ${S.code}<div class="sm mu">${esc(S.name)} · SBD ${esc(S.sbd)}</div></div>
+      <div id="tm">--:--</div>
+      <button class="p" onclick="submit()">Nộp bài</button>
+    </div>
+    <div class="ex">
+      <div class="c">
+        ${q.pass?`<div class="al sm" style="white-space:pre-wrap;background:var(--bg);color:var(--tx)">${ER(q.pass)}</div>`:''}
+        <div class="sm mu">Câu ${S.qi+1}/${cd.qs.length} <span class="bd">${TY[q.type]}</span> ${q.level?`<span class="bd">${LV[q.level]}</span>`:''}</div>
+        <p style="white-space:pre-wrap">${ER(q.stem)}</p>
+        ${b}
+        <p style="margin-top:16px">
+          <button onclick="S.qi=Math.max(0,S.qi-1);save();exam()">← Trước</button> 
+          <button onclick="S.flag=S.flag||{};S.flag[S.qi]=!S.flag[S.qi];save();exam()">${S.flag?.[S.qi]?'Bỏ đánh dấu':'⚑ Đánh dấu'}</button> 
+          <button onclick="S.qi=Math.min(${cd.qs.length-1},S.qi+1);save();exam()">Sau →</button>
+        </p>
+      </div>
+      <div class="c">
+        <b class="sm">Bảng câu hỏi</b>
+        <div class="pl" style="margin-top:8px">${pl}</div>
+        <p class="sm mu">Xanh: đã làm · Vàng: xem lại.</p>
+      </div>
+    </div>`;
+
+  clearInterval(T); T=setInterval(tick, 500); tick();
+}
+
+function ans(v, keep){ S.ans[S.qi] = v; push(); if(!keep) exam(); }
+function tf(k, v){ const a = (S.ans[S.qi] || [null,null,null,null]).slice(); a[k] = v; S.ans[S.qi] = a; push(); exam(); }
+
 function tick(){const r=Math.max(0,Math.round(((S.endAt||S.start+D.cfg.min*60000)-(Date.now()+(S.off||0)))/1000)),e=$('#tm');if(e)e.textContent=Math.floor(r/60)+':'+String(r%60).padStart(2,'0');if(r<=0&&!S.fin)fin()}
 function submit(){if(confirm('Nộp bài thi môn '+currentSub+'?'))fin()}
 async function fin(){if(S.fin)return;S.fin=1;clearInterval(T);
@@ -236,7 +294,6 @@ async function fin(){if(S.fin)return;S.fin=1;clearInterval(T);
  S.g=r.g;S.done=true;result()}
 function result(){const g=S.g||{p:0};$('#app').innerHTML=`<div class="c" style="max-width:520px;margin:30px auto;text-align:center"><h2>Đã nộp bài môn ${currentSub}!</h2><div style="font-size:2.4rem;font-weight:800;color:var(--pr)">${g.p.toFixed(2)}<span class="mu" style="font-size:1rem"> /10</span></div><button onclick="S=null;login()">Thoát</button></div>`}
 
-// Thay thế MutationObserver bằng trình theo dõi không xung đột biến _t
 const _moObs = new MutationObserver(()=>{ clearTimeout(window._mjTimer); window._mjTimer = setTimeout(()=>{ if(window.renderMathInElement) renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false}); }, 40); });
 window.addEventListener('load', ()=>{ _moObs.observe($('#app'),{childList:true,subtree:true}); if(window.renderMathInElement) renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false}); });
 
