@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Hệ thống thi đánh giá năng lực - Đa Môn</title>
+<title>Hệ thống thi ĐGNL Đa Môn - Bảo mật</title>
 <style>
 :root{--bg:#f5f6fa;--cd:#fff;--tx:#1b2333;--mu:#667085;--bd:#dfe3ec;--pr:#1d4ed8;--ps:#e3ebff;--ok:#12805c;--er:#c0392b;--wa:#b7791f;--ws:#fdf0d3;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1420;--cd:#18202f;--tx:#e8ecf5;--mu:#9aa5ba;--bd:#2b3549;--pr:#6e9bff;--ps:#1d2c52;--ok:#4fd1a1;--er:#ff8b7b;--wa:#f0b955;--ws:#473410;color-scheme:dark}}
@@ -19,7 +19,6 @@ input,textarea,select{background:var(--bg);border:1px solid var(--bd);border-rad
 textarea{width:100%;min-height:80px}
 .tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.88rem}th,td{border:1px solid var(--bd);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--bg)}
 .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
-.k{background:var(--bg);border-radius:10px;padding:10px;text-align:center}.k b{display:block;font-size:1.5rem}
 .bd{display:inline-block;font-size:.75rem;padding:1px 8px;border-radius:99px;background:var(--ps);color:var(--pr)}.bd.w{background:var(--ws);color:var(--wa)}
 .ex{display:grid;grid-template-columns:1fr 210px;gap:12px;align-items:start}@media(max-width:800px){.ex{grid-template-columns:1fr}}
 .o{display:block;width:100%;text-align:left;margin:6px 0;padding:10px}
@@ -64,7 +63,7 @@ const SAMPLE=[
 {type:'sa',level:'VD',tag:'Đại số',stem:'Tích các nghiệm của $x^2-7x+10=0$ là',ans:['10'],sol:'Viète.'},
 {type:'essay',level:'VD',tag:'Xác suất',stem:'Trình bày suy luận giải bài toán xác suất toàn phần...',sol:'Rubric: lập sơ đồ 0,5; công thức 1,0; kết quả 0,5.'}
 ];
-const ROSTER='10001,Nguyễn Văn An,12A1\n10002,Trần Thị Bình,12A1\n10003,Lê Minh Châu,12A2';
+const ROSTER='10001,Nguyễn Văn An,12A1,101,123456\n10002,Trần Thị Bình,12A1,102,123456\n10003,Lê Minh Châu,12A2,103,123456';
 
 let currentSub = 'Toan';
 let D = loadSub(currentSub);
@@ -75,7 +74,7 @@ function loadSub(sub){
   return init(sub);
 }
 function save(){
-  try{localStorage.setItem('dgnl_sub_'+currentSub,JSON.stringify(D))}catch(e){alert('Bộ nhớ trình duyệt đã đầy.')}
+  try{localStorage.setItem('dgnl_sub_'+currentSub,JSON.stringify(D))}catch(e){alert('Bộ nhớ trình duyệt đầy.')}
   push();
 }
 
@@ -88,175 +87,132 @@ function changeSubject(sub){
 }
 
 D.gr = D.gr || []; D.grades = D.grades || {}; D.cfg.emax = D.cfg.emax || 2; D.cfg.thr = D.cfg.thr ?? 1; D.imgs = D.imgs || {};
-let OV=[],ONL=false,GV=null,S=null,T=null,tab='bank',mode='ad';
-
-const cl=s=>String(s).replace(/[⟦⟧]/g,'').trim();
-function opts(t){const re=/(?:^|\s)⟦?([A-D])(?:\.⟧?|⟧\.)(?=\s|$)/g;let m,p=[],w='A';while((m=re.exec(t))){if(m[1]===w){p.push([m.index,m[1],m[0].includes('⟦')]);w=String.fromCharCode(w.charCodeAt(0)+1)}}
- if(p.length<4)return null;const o={},a=[];p.forEach(([i,k,u],n)=>{const e=p[n+1]?p[n+1][0]:t.length;o[k]=cl(t.slice(i,e).replace(/^\s*⟦?[A-D](\.⟧?|⟧\.)/,''));if(u)a.push(k)});return{stem:t.slice(0,p[0][0]),opt:o,ans:a}}
-function parseLines(L){const out=[];let c=null,hd=false,G=null,TOP='';
- const fin=()=>{if(!c)return;const b=c.b,t=b.join('\n'),q={level:c.lv,tag:TOP,pass:c.g,sol:cl(c.h.join('\n'))};
-  const st=b.filter(l=>/^⟦?[a-d](\)⟧|⟧\)|\)|\.⟧|⟧\.|\.)\s/.test(l));
-  if(c.tl){q.type='essay';q.stem=cl(t)}
-  else if(c.tf||st.length>=3){q.type='tf';q.stem=cl(b.filter(l=>!st.includes(l)).join('\n'));q.st=st.map(l=>{const ok=l.slice(0,4).includes('⟦');let r=l.replace(/^⟦?[a-d][).]?⟧?[).]?\s*/,'');const m=r.match(/^\s*#?\s*\[(NB|TH|VDC|VD)\]\s*#?\s*/);return{k:l.match(/[a-d]/)[0],t:cl(m?r.slice(m[0].length):r.replace(/^#\s*/,'')),lv:m?m[1]:c.lv,ok}});q.level=q.level||(q.st[0]||{}).lv}
-  else{const o=opts(t),sa=t.match(/Trả lời:\s*\[\[(.*?)\]\]/);
-   if(o){q.type='mc';q.stem=cl(o.stem);q.opt=o.opt;q.ans=o.ans}
-   else if(sa){q.type='sa';q.stem=cl(t.slice(0,sa.index));q.ans=sa[1].split('||').map(s=>s.trim())}
-   else{q.type='essay';q.stem=cl(t)}}
-  out.push(q);c=null};
- for(const l of L){let m;
-  if(/^\[DIV\]/.test(l)){fin();G=[];continue}
-  if(/^\[(ONE|NODIV)\]/.test(l)){fin();G=null;continue}
-  const lm=l.match(/^\[LV\d\]\s*(.*)/);if(lm){fin();hd=false;if(lm[1].trim())TOP=cl(lm[1]).slice(0,60);continue}
-  if(/^\[(LV\d|TDBT)\]/.test(l)||/^(Phần|PHẦN)\s+[0-9IVX]+/.test(l)){fin();hd=false;continue}
-  if(m=l.match(/^Câu\s+(\d+)\s*[.:]\s*((?:\[[A-Z0-9]+\]\s*)*)(.*)$/)){fin();const tg=[...m[2].matchAll(/\[([A-Z0-9]+)\]/g)].map(x=>x[1]);c={lv:tg.find(x=>LV[x]),tf:tg.includes('TF'),tl:tg.includes('TL'),b:m[3]?[m[3]]:[],h:[],g:G?G.join('\n'):''};hd=false;continue}
-  if(!c){if(G)G.push(l);continue}
-  if(/^\[HDG\]/.test(l)){hd=true;const r=l.slice(5).trim();if(r)c.h.push(r);continue}
-  (hd?c.h:c.b).push(l)}
- fin();return out}
-
-const OM_MAP={'≤':'\\le ','≥':'\\ge ','≠':'\\ne ','≈':'\\approx ','∞':'\\infty ','π':'\\pi ','α':'\\alpha ','β':'\\beta ','γ':'\\gamma ','δ':'\\delta ','Δ':'\\Delta ','θ':'\\theta ','Θ':'\\Theta ','λ':'\\lambda ','Λ':'\\Lambda ','μ':'\\mu ','ν':'\\nu ','ρ':'\\rho ','σ':'\\sigma ','Σ':'\\Sigma ','τ':'\\tau ','φ':'\\varphi ','ϕ':'\\phi ','Φ':'\\Phi ','ω':'\\omega ','Ω':'\\Omega ','ε':'\\varepsilon ','η':'\\eta ','κ':'\\kappa ','ξ':'\\xi ','ψ':'\\psi ','χ':'\\chi ','ζ':'\\zeta ','∈':'\\in ','∉':'\\notin ','⊂':'\\subset ','⊃':'\\supset ','⊆':'\\subseteq ','∪':'\\cup ','∩':'\\cap ','∅':'\\varnothing ','→':'\\to ','⟶':'\\to ','⇒':'\\Rightarrow ','⇔':'\\Leftrightarrow ','⇐':'\\Leftarrow ','↔':'\\leftrightarrow ','×':'\\times ','·':'\\cdot ','⋅':'\\cdot ','°':'^\\circ ','±':'\\pm ','∓':'\\mp ','−':'-','–':'-','∠':'\\angle ','⊥':'\\perp ','∥':'\\parallel ','…':'\\ldots ','⋯':'\\cdots ','∀':'\\forall ','∃':'\\exists ','∂':'\\partial ','∇':'\\nabla ','√':'\\sqrt{}','ℝ':'\\mathbb{R}','ℕ':'\\mathbb{N}','ℤ':'\\mathbb{Z}','ℚ':'\\mathbb{Q}','ℂ':'\\mathbb{C}','′':"'",'″':"''"};
-const OM_FN=/^(sin|cos|tan|cot|sec|csc|log|ln|lg|lim|max|min|exp|arcsin|arccos|arctan|sinh|cosh|tanh|det|gcd|sup|inf|ker|deg|dim)$/;
-function omT(s){const mp=w=>[...w].map(c=>OM_MAP[c]!==undefined?OM_MAP[c]:c).join('');return s.replace(/[\p{L}\u0300-\u036f]+|[^\p{L}\u0300-\u036f]+/gu,w=>/^[\p{L}\u0300-\u036f]/u.test(w)&&![...w].every(c=>c.charCodeAt(0)<128||OM_MAP[c]!==undefined)?'\\text{'+w+'}':mp(w))}
-function omKids(n,names){return [...n.childNodes].filter(c=>c.nodeType===1&&names.includes(c.localName))}
-function omOne(n,name){const k=omKids(n,[name])[0];return k?omBody(k):''}
-function omBody(n){let s='';for(const c of n.childNodes){if(c.nodeType===1&&!/Pr$/.test(c.localName))s+=om(c)}return s}
-function omPr(n,pr,attr){const p=omKids(n,[pr])[0];if(!p)return null;const a=[...p.childNodes].filter(c=>c.nodeType===1&&c.localName===attr)[0];if(!a)return null;const v=a.getAttribute('m:val')??a.getAttribute('val');return v===null?'':v}
-function omDelim(c,end){const m={'':'.','{':'\\{','}':'\\}','|':'|','‖':'\\|','⟨':'\\langle ','⟩':'\\rangle ','⌊':'\\lfloor ','⌋':'\\rfloor ','⌈':'\\lceil ','⌉':'\\rceil '};return c in m?m[c]:c}
-function om(n){switch(n.localName){
- case 'r':{const t=[...n.childNodes].filter(c=>c.nodeType===1&&c.localName==='t').map(c=>c.textContent).join('');if(OM_FN.test(t.trim()))return '\\'+t.trim()+' ';return omT(t)}
- case 'f':{const num=omOne(n,'num'),den=omOne(n,'den'),ty=omPr(n,'fPr','type');if(ty==='noBar')return `\\binom{${num}}{${den}}`;return `\\frac{${num}}{${den}}`}
- case 'sSup':return `{${omOne(n,'e')}}^{${omOne(n,'sup')}}`;
- case 'sSub':return `{${omOne(n,'e')}}_{${omOne(n,'sub')}}`;
- case 'sSubSup':return `{${omOne(n,'e')}}_{${omOne(n,'sub')}}^{${omOne(n,'sup')}}`;
- case 'rad':{const dg=omOne(n,'deg').trim(),h=omPr(n,'radPr','degHide');return dg&&h!=='1'?`\\sqrt[${dg}]{${omOne(n,'e')}}`:`\\sqrt{${omOne(n,'e')}}`}
- case 'd':{let b=omPr(n,'dPr','begChr'),e=omPr(n,'dPr','endChr'),sp=omPr(n,'dPr','sepChr');if(b===null)b='(';if(e===null)e=')';if(sp===null||sp==='')sp='|';const es=omKids(n,['e']);return `\\left${omDelim(b)}${es.map(omBody).join(omT(sp)==='|'?'\\middle|':omT(sp))}\\right${omDelim(e)}`}
- case 'nary':{const ch=omPr(n,'naryPr','chr'),mp={'':'\\int ','∫':'\\int ','∑':'\\sum ','∏':'\\prod '},sym=ch===null?'\\int ':(mp[ch]||'\\int ');return sym+`{${omOne(n,'e')}}`}
- case 'func':return omOne(n,'fName')+' '+`{${omOne(n,'e')}}`;
- case 'acc':{const ch=omPr(n,'accPr','chr'),e=omOne(n,'e'),mp={'̂':'hat','^':'hat','̄':'bar','→':'vec'},k=mp[ch===null?'̂':ch]||'hat';return `\\${k}{${e}}`}
- default:return omBody(n)}}
-
-async function shrink(blob,ext){const bm=await createImageBitmap(blob),png=ext==='png'||ext==='gif';let w=Math.min(720,bm.width),u='';
- for(let i=0;i<6;i++){const c=document.createElement('canvas');c.width=w;c.height=Math.max(1,Math.round(bm.height*w/bm.width));const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(bm,0,0,c.width,c.height);u=c.toDataURL(png?'image/png':'image/jpeg',.78);if(u.length<=45000)break;w=Math.round(w*.8)}return u}
-async function docxLines(f){const z=await JSZip.loadAsync(await f.arrayBuffer()),W='http://schemas.openxmlformats.org/wordprocessingml/2006/main',rels={};
- const x=new DOMParser().parseFromString(await z.file('word/document.xml').async('string'),'application/xml'),L=[],rf=z.file('word/_rels/document.xml.rels');
- if(rf)for(const r of new DOMParser().parseFromString(await rf.async('string'),'application/xml').getElementsByTagName('Relationship'))rels[r.getAttribute('Id')]=r.getAttribute('Target');
- D.imgs=D.imgs||{};let IN=0;const tg=Date.now().toString(36);
- const pic=async n=>{const b=n.getElementsByTagName('a:blip')[0],v=n.getElementsByTagName('v:imagedata')[0],rid=b?b.getAttribute('r:embed'):v?v.getAttribute('r:id'):null,t=rid&&rels[rid];if(!t)return'';
-  const ext=t.split('.').pop().toLowerCase();try{const u8=await z.file(t.replace(/^\/?(word\/)?/,'word/')).async('uint8array'),id='w'+tg+(++IN);D.imgs[id]=await shrink(new Blob([u8],{type:'image/'+(ext==='jpg'?'jpeg':ext)}),ext);return '⟪IMG:'+id+'⟫'}catch(e){return' [hình lỗi] '}};
- for(const p of x.getElementsByTagNameNS(W,'p')){let s='';for(const n of p.childNodes){
-  if(n.localName==='r'){const t=[...n.childNodes].map(c=>c.localName==='t'?c.textContent:(c.localName==='tab'||c.localName==='br')?' ':'').join('');s+=t;if(n.getElementsByTagName('a:blip').length||n.getElementsByTagName('v:imagedata').length)s+=await pic(n)}
-  else if(n.localName==='oMath'||n.localName==='oMathPara'){const m=om(n).trim();if(m)s+='$'+m+'$'}}
-  if(s)L.push(s)}
- return L}
-async function importFile(ev){const f=ev.target.files[0];if(!f)return;let q=[];
- try{if(/\.docx$/i.test(f.name))q=parseLines(await docxLines(f));
-  else if(/\.json$/i.test(f.name)){const d=JSON.parse(await f.text());Object.assign(D.imgs=D.imgs||{},d.imgs||{});q=(d.items||[]).map(i=>({type:i.type,level:i.level,tag:'',stem:i.stem,opt:i.options,ans:i.answer,pass:'',sol:i.solution,st:i.statements}))}
-  else{alert('Chỉ nhận .docx hoặc .json');return}}catch(e){alert('Lỗi đọc file: '+e.message);return}
- if(!q.length){alert('Không tìm thấy câu hỏi.');return}
- D.bank=q.map((x,i)=>({...x,no:i+1}));D.cfg.codes=[];save();show()}
-
-function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-function shuf(a,r){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
-function gen(){const n=+$('#nc').value||1;D.cfg.n=n;D.cfg.codes=[];
- for(let i=0;i<n;i++){const code=101+i,r=rng(code*7919+D.bank.length);let qs=[];
-  ['mc','tf','sa','essay'].forEach(t=>qs.push(...shuf(D.bank.filter(q=>q.type===t),r)));
-  qs=qs.map(q=>{const c={...q};if(q.type==='mc'){const ks=shuf(Object.keys(q.opt),r);c.ov=ks.map(k=>q.opt[k]);c.key=ks.indexOf(q.ans[0])}
-   if(q.type==='tf'){const s=shuf(q.st||[],r);c.sv=s.map(x=>x.t);c.keys=s.map(x=>!!x.ok)}return c});
-  D.cfg.codes.push({code,qs})}save();show()}
-
-async function save2(name,data,type){const b=new Blob([data],{type}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),1000)}
-function rows(){return D.roster.split('\n').map(l=>l.split(',').map(s=>s.trim())).filter(r=>r[0]).map(r=>({sbd:r[0],ten:r[1]||'',lop:r[2]||''}))}
+let OV=[],ONL=false,GV=null,S=null,T=null,tab='bank',mode='ad',adminAuthed=false;
 
 async function api(a,p){
   try{
     const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({a,subject:currentSub,...p})});
     const t=await r.text();
     try{return JSON.parse(t)}catch(e){return{ok:false,err:'Lỗi kết nối máy chủ'}}
-  }catch(e){return{ok:false,err:'Không kết nối được mạng'}}
+  }catch(e){return{ok:false,err:'Không kết nối mạng'}}
 }
-function AK(){let k=sessionStorage.getItem('ak');if(!k){k=prompt('Mã quản trị:')||'';sessionStorage.setItem('ak',k)}return k}
+
+function AK(){
+  return sessionStorage.getItem('ak') || '';
+}
+
+async function adminLogin(){
+  const pass=$('#adPass').value.trim();
+  const r=await api('admin_login',{key:pass});
+  if(r.ok){
+    sessionStorage.setItem('ak',pass);
+    adminAuthed=true;
+    show();
+  }else{
+    alert(r.err||'Mật khẩu Quản trị không chính xác');
+  }
+}
 
 async function pub(){
   const r=await api('publish',{key:AK(),cfg:D.cfg,codes:D.cfg.codes,roster:D.roster,gcfg:{emax:D.cfg.emax,thr:D.cfg.thr,gr:D.gr},imgs:D.imgs});
-  alert(r.ok?`Đã đăng thành công môn ${currentSub} (${r.n} mã đề, ${r.hs} thí sinh)!`:r.err);
+  alert(r.ok?`Đăng thành công môn ${currentSub} (${r.n} mã đề, ${r.hs} thí sinh)!`:r.err);
 }
+
 async function refresh(){const r=await api('stats',{key:AK()});if(!r.ok){alert(r.err);return}D.subs=r.subs;show()}
 function go2(t){tab=t;if(t==='gs'&&API_URL)refresh();else if(t==='gc')gcLoad();else show()}
 
 let _t;function push(){if(!API_URL||!S||S.done||mode!=='hs')return;clearTimeout(_t);_t=setTimeout(()=>api('save',{sbd:S.sbd,subject:currentSub,token:S.token,ans:S.ans,viol:S.viol,qi:S.qi}),2500)}
 
+// Đăng nhập Thí sinh (SBD + Pass)
 async function enter(){
-  const sbd=$('#sb').value.trim();if(!sbd)return;
-  const r=await api('login',{sbd,subject:currentSub});
+  const sbd=$('#sb').value.trim(), pass=$('#sp').value.trim();
+  if(!sbd) return;
+  const r=await api('login',{sbd,pass,subject:currentSub});
   if(!r.ok){alert(r.err);return}
   D.imgs=Object.assign(D.imgs||{},r.imgs||{});
   S={sbd,name:r.name,code:r.code,cd:r.cd,ans:r.ans||{},flag:{},viol:r.viol||0,start:r.start,endAt:r.endAt,off:r.now-Date.now(),done:r.done,qi:r.qi||0,token:r.token,g:r.g,title:r.title};
   S.done?result():exam();
 }
 
-/* --- LOGIC VÀ GIAO DIỆN PHÂN QUYỀN CHẤM TỰ LUẬN --- */
 const cls=t=>String(t||'').split(/[,;]/).map(x=>x.trim()).filter(Boolean);
 function fin3(a,b,c,t){if(c!=null)return{f:c,st:'Vòng 3'};if(a==null||b==null)return{f:null,st:'Chờ chấm'};return Math.abs(a-b)>t?{f:null,st:'Lệch > '+t}:{f:(a+b)/2,st:'Đạt'}}
 const gsc=(sbd,no,rd)=>{const x=D.grades[sbd+'|'+no+'|'+rd];return x?x.score:null};
 function essOf(s){const cd=D.cfg.codes.find(c=>c.code==s.code);return cd?cd.qs.map((q,i)=>({q,i})).filter(x=>x.q.type==='essay'):[]}
 
-const LOC={
- g_login(p){const g=D.gr.find(x=>x.pin&&x.pin===p.pin);return g?{ok:true,name:g.name,round:+g.round,classes:g.classes,emax:D.cfg.emax}:{ok:false,err:'Sai mã giám khảo'}},
- g_list(p){const g=D.gr.find(x=>x.pin&&x.pin===p.pin);if(!g)return{ok:false,err:'Sai mã giám khảo'};const T=[];
-  rows().forEach(r=>{const s=D.subs?.[r.sbd];if(!s||!s.done||!cls(g.classes).includes(r.lop))return;
-   const it=essOf(s).map(({q,i})=>({no:q.no,stem:q.stem,sol:q.sol,ans:s.ans[i]||'',mine:D.grades[r.sbd+'|'+q.no+'|'+g.round]||null}));if(it.length)T.push({id:r.sbd,items:it})});return{ok:true,tasks:T}},
- g_save(p){const g=D.gr.find(x=>x.pin&&x.pin===p.pin);if(!g)return{ok:false,err:'Sai mã giám khảo'};const r=rows().find(x=>x.sbd===p.sbd),s=D.subs?.[p.sbd];
-  if(!r||!s||!s.done||!cls(g.classes).includes(r.lop)||!essOf(s).some(x=>x.q.no==p.no))return{ok:false,err:'Bài không thuộc phạm vi chấm'};
-  if(!(p.score>=0&&p.score<=D.cfg.emax))return{ok:false,err:'Điểm ngoài khoảng cho phép'};D.grades[p.sbd+'|'+p.no+'|'+g.round]={score:p.score,note:p.note||''};save();return{ok:true}},
- g_final(p){D.grades[p.sbd+'|'+p.no+'|3']={score:p.score};save();return{ok:true}},
- g_over(){const O=[];rows().forEach(r=>{const s=D.subs?.[r.sbd];if(!s||!s.done)return;essOf(s).forEach(({q})=>{const v=n=>gsc(r.sbd,q.no,n);O.push({sbd:r.sbd,name:r.ten,lop:r.lop,no:q.no,v1:v(1),v2:v(2),v3:v(3),...fin3(v(1),v(2),v(3),D.cfg.thr)})})});return{ok:true,rows:O}}
-};
-const rpcG=async(a,p)=>API_URL?api(a,p):LOC[a](p);
+const rpcG=async(a,p)=>api(a,p);
 
-async function gcLoad(){const r=await rpcG('g_over',{key:API_URL?AK():''});if(!r.ok){alert(r.err);return}OV=r.rows;show()}
-async function setV3(sbd,no,v){const r=await rpcG('g_final',{key:API_URL?AK():'',sbd,no,score:+v});if(!r.ok)alert(r.err);gcLoad()}
-async function gcfgSave(){const r=await api('g_cfg',{key:AK(),gcfg:{emax:D.cfg.emax,thr:D.cfg.thr,gr:D.gr}});alert(r.ok?'Đã lưu cấu hình chấm.':r.err)}
+async function gcLoad(){
+  const r = await api('stats', {key: AK()});
+  if(!r.ok){alert(r.err);return;}
+  D.gr = r.gr || [];
+  D.cfg.emax = r.emax ?? D.cfg.emax;
+  D.cfg.thr = r.thr ?? D.cfg.thr;
+  OV = (await rpcG('g_over', {key: AK()})).rows || [];
+  show();
+}
+
+async function setV3(sbd,no,v){const r=await rpcG('g_final',{key:AK(),sbd,no,score:+v});if(!r.ok)alert(r.err);gcLoad()}
+async function gcfgSave(){const r=await api('g_cfg',{key:AK(),gcfg:{emax:D.cfg.emax,thr:D.cfg.thr,gr:D.gr}});alert(r.ok?'Lưu cấu hình chấm thành công.':r.err)}
 
 function gcTab(){
  const c=D.cfg,n3=OV.filter(o=>/^Lệch/.test(o.st)).length,v=OV.filter(o=>ONL?/^Lệch|^Vòng 3/.test(o.st):true);
  return `<div class="c"><h2>Cấu hình chấm tự luận môn ${currentSub}</h2>
  <div class="g">
-   <label class="sm">Điểm tối đa mỗi câu tự luận<br><input type="number" step="0.25" value="${c.emax}" onchange="D.cfg.emax=+this.value;save()"></label>
-   <label class="sm">Ngưỡng lệch cần vòng 3 (điểm)<br><input type="number" step="0.25" value="${c.thr}" onchange="D.cfg.thr=+this.value;save()"></label>
+   <label class="sm">Điểm tối đa mỗi câu<br><input type="number" step="0.25" value="${c.emax}" onchange="D.cfg.emax=+this.value;save()"></label>
+   <label class="sm">Ngưỡng lệch cần vòng 3<br><input type="number" step="0.25" value="${c.thr}" onchange="D.cfg.thr=+this.value;save()"></label>
  </div>
- <p class="sm mu">Phân công giám khảo chấm 2 vòng độc lập cho môn ${currentSub}. Hai vòng không thấy điểm của nhau. Điểm câu là trung bình hai vòng; nếu lệch quá ngưỡng sẽ do Trưởng bộ môn nhập điểm vòng 3.</p>
- <div class="tw"><table><tr><th>Giám khảo</th><th>Mã PIN đăng nhập</th><th>Vòng</th><th>Lớp phụ trách</th><th></th></tr>
+ <div class="tw" style="margin-top:10px"><table><tr><th>Họ tên Giám khảo</th><th>Tài khoản</th><th>Mật khẩu / PIN</th><th>Vòng</th><th>Lớp phụ trách</th><th></th></tr>
  ${D.gr.map((g,i)=>`<tr>
    <td><input value="${esc(g.name)}" onchange="D.gr[${i}].name=this.value;save()"></td>
-   <td><input size="8" value="${esc(g.pin)}" onchange="D.gr[${i}].pin=this.value;save()"></td>
+   <td><input value="${esc(g.user||g.name)}" onchange="D.gr[${i}].user=this.value;save()"></td>
+   <td><input type="password" size="10" value="${esc(g.pin)}" onchange="D.gr[${i}].pin=this.value;save()"></td>
    <td><select onchange="D.gr[${i}].round=+this.value;save();show()"><option ${g.round==1?'selected':''}>1</option><option ${g.round==2?'selected':''}>2</option></select></td>
    <td><input value="${esc(g.classes)}" placeholder="12A1,12A2" onchange="D.gr[${i}].classes=this.value;save();show()"></td>
    <td><button onclick="D.gr.splice(${i},1);save();show()">Xóa</button></td>
  </tr>`).join('')}</table></div>
- <p><button onclick="D.gr.push({name:'',pin:String(Math.floor(1000+Math.random()*9000)),round:1,classes:''});save();show()">+ Thêm giám khảo</button> ${API_URL?'<button class="p" onclick="gcfgSave()">Lưu cấu hình chấm</button>':''}</p>
+ <p><button onclick="D.gr.push({name:'',user:'',pin:String(Math.floor(1000+Math.random()*9000)),round:1,classes:''});save();show()">+ Thêm giám khảo</button> ${API_URL?'<button class="p" onclick="gcfgSave()">Lưu cấu hình chấm</button>':''}</p>
  </div>
  <div class="c"><h2>Tổng hợp hai vòng chấm (Môn ${currentSub})</h2>
- <p><button onclick="gcLoad()">Làm mới bảng chấm</button> <label class="sm"><input type="checkbox" ${ONL?'checked':''} onchange="ONL=this.checked;show()"> Chỉ hiện bài lệch/có vòng 3</label> <span class="bd w">${n3} câu cần vòng 3</span></p>
+ <p><button onclick="gcLoad()">Làm mới bảng chấm</button> <label class="sm"><input type="checkbox" ${ONL?'checked':''} onchange="ONL=this.checked;show()"> Chỉ hiện bài lệch/vòng 3</label> <span class="bd w">${n3} câu cần vòng 3</span></p>
  <div class="tw"><table><tr><th>Lớp</th><th>SBD · Họ tên</th><th>Câu</th><th>Vòng 1</th><th>Vòng 2</th><th>Lệch</th><th>Vòng 3</th><th>Điểm câu</th><th>Trạng thái</th></tr>
  ${v.map(o=>`<tr><td>${esc(o.lop)}</td><td>${esc(o.sbd)} · ${esc(o.name)}</td><td>${o.no}</td><td>${o.v1??''}</td><td>${o.v2??''}</td><td>${o.v1!=null&&o.v2!=null?Math.abs(o.v1-o.v2).toFixed(2):''}</td><td><input type="number" step="0.25" style="width:70px" value="${o.v3??''}" onchange="setV3('${esc(o.sbd)}',${o.no},this.value)"></td><td>${o.f!=null?+o.f.toFixed(2):''}</td><td>${esc(o.st)}</td></tr>`).join('')||'<tr><td colspan="9" class="mu">Chưa có bài tự luận nào cần tổng hợp.</td></tr>'}
  </table></div></div>`;
 }
 
-function gvView(){GV?gvMain():$('#app').innerHTML=`<div class="c" style="max-width:420px;margin:30px auto"><h2>Giám khảo chấm tự luận môn ${currentSub}</h2><label class="sm">Mã PIN Giám khảo<br><input id="gp" type="password" style="width:100%"></label><p><button class="p" onclick="gvIn()">Đăng nhập chấm</button></p></div>`}
-async function gvIn(){const pin=$('#gp').value.trim(),r=await rpcG('g_login',{pin});if(!r.ok){alert(r.err);return}const l=await rpcG('g_list',{pin});D.imgs=Object.assign(D.imgs||{},l.imgs||{});GV={pin,...r,tasks:l.tasks||[],i:0};gvMain()}
-async function gvReload(){const l=await rpcG('g_list',{pin:GV.pin});if(l.ok){D.imgs=Object.assign(D.imgs||{},l.imgs||{});GV.tasks=l.tasks;GV.i=Math.min(GV.i,Math.max(0,l.tasks.length-1))}gvMain()}
+// Đăng nhập Giám khảo (User/PIN + Pass)
+function gvView(){
+  GV?gvMain():$('#app').innerHTML=`
+    <div class="c" style="max-width:420px;margin:30px auto">
+      <h2>Giám khảo chấm tự luận môn ${currentSub}</h2>
+      <label class="sm">Tài khoản / Mã giám khảo<br><input id="gu" placeholder="Nhập tài khoản..." style="width:100%"></label>
+      <label class="sm" style="margin-top:8px;display:block">Mật khẩu / Mã PIN<br><input id="gp" type="password" placeholder="Nhập mật khẩu..." style="width:100%"></label>
+      <p style="margin-top:14px"><button class="p" onclick="gvIn()">Đăng nhập chấm bài</button></p>
+    </div>`;
+}
+
+async function gvIn(){
+  const user=$('#gu').value.trim(), pin=$('#gp').value.trim();
+  const r=await rpcG('g_login',{user,pin});
+  if(!r.ok){alert(r.err);return}
+  const l=await rpcG('g_list',{user,pin});
+  D.imgs=Object.assign(D.imgs||{},l.imgs||{});
+  GV={user,pin,...r,tasks:l.tasks||[],i:0};
+  gvMain();
+}
+
+async function gvReload(){const l=await rpcG('g_list',{user:GV.user,pin:GV.pin});if(l.ok){D.imgs=Object.assign(D.imgs||{},l.imgs||{});GV.tasks=l.tasks;GV.i=Math.min(GV.i,Math.max(0,l.tasks.length-1))}gvMain()}
 
 function gvMain(){
- const T=GV.tasks,t=T[GV.i],dn=T.filter(x=>x.items.every(i=>i.mine)).length,hd=`<div class="c" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div style="flex:1"><b>${esc(GV.name)}</b> · Vòng ${GV.round} (Môn ${currentSub})<div class="sm mu">Lớp: ${esc(GV.classes)} · Đã chấm ${dn}/${T.length} bài</div></div><button onclick="gvReload()">Tải lại</button><button onclick="GV=null;gvView()">Thoát</button></div>`;
+ const T=GV.tasks,t=T[GV.i],dn=T.filter(x=>x.items.every(i=>i.mine)).length,hd=`<div class="c" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div style="flex:1"><b>${esc(GV.name)}</b> · Vòng ${GV.round} (Môn ${currentSub})<div class="sm mu">Lớp phụ trách: ${esc(GV.classes)} · Đã chấm ${dn}/${T.length} bài</div></div><button onclick="gvReload()">Tải lại</button><button onclick="GV=null;gvView()">Thoát</button></div>`;
  if(!t){$('#app').innerHTML=hd+'<div class="c mu">Chưa có bài tự luận nào được nộp thuộc lớp bạn phụ trách.</div>';return}
  $('#app').innerHTML=hd+`<div class="ex"><div>${t.items.map((it,k)=>`<div class="c"><div class="sm mu">Bài ${GV.i+1} · Câu tự luận số ${it.no}</div><p style="white-space:pre-wrap"><b>${ER(it.stem)}</b></p><details><summary class="sm">Hướng dẫn chấm</summary><pre class="sm">${esc(it.sol||'(chưa có)')}</pre></details><div class="al" style="background:var(--bg);color:var(--tx)"><pre>${esc(it.ans||'(thí sinh bỏ trống)')}</pre></div><div class="tr"><span>Điểm (0 đến ${GV.emax}):</span><input id="sc${k}" type="number" min="0" max="${GV.emax}" step="0.25" value="${it.mine?it.mine.score:''}" style="width:90px"></div><input id="nt${k}" placeholder="Nhận xét (không bắt buộc)" value="${esc(it.mine?it.mine.note||'':'')}" style="width:100%;margin-top:6px"></div>`).join('')}
- <p><button onclick="GV.i--;gvMain()" ${GV.i?'':'disabled'}>← Bài trước</button> <button class="p" onclick="gvSave()">Lưu và sang bài sau</button></p></div>
+ <p><button onclick="GV.i--;gvMain()" ${GV.i?'':'disabled'}>← Bài trước</button> <button class="p" onclick="gvSave()">Lưu và bài sau →</button></p></div>
  <div class="c"><b class="sm">Danh sách bài</b><div class="pl" style="margin-top:8px">${T.map((x,i)=>`<button class="${x.items.every(z=>z.mine)?'d':''} ${i===GV.i?'u':''}" onclick="GV.i=${i};gvMain()">${i+1}</button>`).join('')}</div></div></div>`;
 }
 
 async function gvSave(){const t=GV.tasks[GV.i],b=t.items.map((it,k)=>({it,s:$('#sc'+k).value,n:$('#nt'+k).value}));
  if(b.some(x=>x.s===''||+x.s<0||+x.s>GV.emax)){alert(`Nhập điểm từ 0 đến ${GV.emax} cho mọi câu.`);return}
- const rs=await Promise.all(b.map(x=>rpcG('g_save',{pin:GV.pin,sbd:t.id,no:x.it.no,score:+x.s,note:x.n}))),bad=rs.find(r=>!r.ok);if(bad){alert(bad.err);return}
+ const rs=await Promise.all(b.map(x=>rpcG('g_save',{user:GV.user,pin:GV.pin,sbd:t.id,no:x.it.no,score:+x.s,note:x.n}))),bad=rs.find(r=>!r.ok);if(bad){alert(bad.err);return}
  b.forEach(x=>x.it.mine={score:+x.s,note:x.n});if(GV.i<GV.tasks.length-1)GV.i++;gvMain()}
 
 function role(r){mode=r;show()}
@@ -268,25 +224,54 @@ function show(){
 }
 
 function admin(){
+  if(!adminAuthed && sessionStorage.getItem('ak')){
+    adminAuthed=true;
+  }
+  if(!adminAuthed){
+    $('#app').innerHTML=`
+      <div class="c" style="max-width:420px;margin:30px auto">
+        <h2>Đăng nhập Quản trị viên (${currentSub})</h2>
+        <label class="sm">Mật khẩu Quản trị<br><input id="adPass" type="password" style="width:100%" placeholder="Nhập mật khẩu..."></label>
+        <p style="margin-top:14px"><button class="p" onclick="adminLogin()">Đăng nhập Quản trị</button></p>
+      </div>`;
+    return;
+  }
   const tabs=[['bank','1. Ngân hàng đề'],['cd','2. Mã đề & Đăng mạng'],['gs','3. Giám sát & Kết quả'],['gc','4. Phân quyền & Chấm tự luận']];
   let h=`<div class="c" style="display:flex;gap:6px;flex-wrap:wrap"><div class="sub-bar"><b>Môn quản lý:</b> <span style="color:var(--pr);font-weight:bold">${currentSub}</span></div>${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="go2('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
   
   if(tab==='bank')h+=`<div class="c"><h2>Nhập đề gốc môn ${currentSub}</h2><input type="file" accept=".docx,.json" onchange="importFile(event)"><p class="sm mu">Đọc file Word (.docx) chứa câu hỏi.</p></div>
   <div class="c"><h2>Ngân hàng: ${D.bank.length} câu</h2><div class="tw"><table><tr><th>#</th><th>Dạng</th><th>Mức</th><th>Nội dung</th></tr>${D.bank.map((q,i)=>`<tr><td>${q.no}</td><td>${TY[q.type]}</td><td>${LV[q.level]||'—'}</td><td>${esc(String(q.stem).slice(0,100))}</td></tr>`).join('')}</table></div></div>`;
   
-  if(tab==='cd'){const c=D.cfg;h+=`<div class="c"><h2>Sinh mã đề môn ${currentSub}</h2><div class="g"><label class="sm">Tên kỳ thi<br><input id="cn" value="${esc(c.name)}" onchange="D.cfg.name=this.value;save()"></label><label class="sm">Thời gian (phút)<br><input id="ct" type="number" value="${c.min}" onchange="D.cfg.min=+this.value;save()"></label><label class="sm">Số mã đề<br><input id="nc" type="number" min="1" max="10" value="${c.n}"></label></div><p><button class="p" onclick="gen()">Sinh mã đề</button></p>
-  ${c.codes.length?`<p>Đã sinh: ${c.codes.map(x=>`<span class="bd">Mã ${x.code}</span>`).join(' ')}</p><button class="p" onclick="pub()">Đăng đề + danh sách môn ${currentSub} lên máy chủ</button>`:'<p class="mu">Chưa có mã đề.</p>'}</div>`;}
+  if(tab==='cd'){const c=D.cfg;h+=`<div class="c"><h2>Sinh mã đề môn ${currentSub}</h2><div class="g"><label class="sm">Tên kỳ thi<br><input id="cn" value="${esc(c.name)}" onchange="D.cfg.name=this.value;save()"></label><label class="sm">Thời gian (phút)<br><input id="ct" type="number" value="${c.min}" onchange="D.cfg.min=+this.value;save()"></label><label class="sm">Số mã đề<br><input id="nc" type="number" min="1" max="50" value="${c.n}"></label></div><p><button class="p" onclick="gen()">Sinh mã đề</button></p>
+  ${c.codes.length?`<p>Đã sinh: ${c.codes.map(x=>`<span class="bd">Mã ${x.code}</span>`).join(' ')}</p><button class="p" onclick="pub()">Đăng đề + danh sách môn ${currentSub} lên máy chủ</button>`:'<p class="mu">Chưa có mã đề.</p></div>';}
   
   if(tab==='gs'){const R=rows(),sb=R.map(r=>D.subs?.[r.sbd]),dt=sb.filter(Boolean);
-  h+=`<div class="c"><h2>Danh sách thí sinh môn ${currentSub}</h2><textarea id="ro" onchange="D.roster=this.value;save();show()" placeholder="SBD,Họ tên,Lớp">${esc(D.roster)}</textarea><p><button onclick="refresh()">Làm mới dữ liệu từ Server</button></p></div>
-  <div class="c"><div class="tw"><table><tr><th>SBD</th><th>Họ tên</th><th>Lớp</th><th>Mã đề</th><th>Điểm</th><th>Trạng thái</th></tr>${R.map(r=>{const s=D.subs?.[r.sbd],g=s&&s.done?(s.g||{p:0}):null;return `<tr><td>${esc(r.sbd)}</td><td>${esc(r.ten)}</td><td>${esc(r.lop)}</td><td>${s?s.code:''}</td><td>${g?g.p.toFixed(2):''}</td><td>${s?(s.done?'Đã nộp':'Đang thi'):'Vắng'}</td></tr>`}).join('')}</table></div></div>`}
+  h+=`<div class="c"><h2>Danh sách thí sinh môn ${currentSub}</h2><textarea id="ro" onchange="D.roster=this.value;save();show()" placeholder="MaHS,HoTen,Lop,MaDe,Matkhau">${esc(D.roster)}</textarea><p><button onclick="refresh()">Làm mới dữ liệu từ Server</button></p></div>
+  <div class="c"><div class="tw"><table><tr><th>Mã HS</th><th>Họ tên</th><th>Lớp</th><th>Mã đề</th><th>Điểm</th><th>Trạng thái</th></tr>${R.map(r=>{const s=D.subs?.[r.sbd],g=s&&s.done?(s.g||{p:0}):null;return `<tr><td>${esc(r.sbd)}</td><td>${esc(r.ten)}</td><td>${esc(r.lop)}</td><td>${r.made||(s?s.code:'')}</td><td>${g?g.p.toFixed(2):''}</td><td>${s?(s.done?'Đã nộp':'Đang thi'):'Vắng'}</td></tr>`}).join('')}</table></div></div>`;}
   
   if(tab==='gc') h+=gcTab();
 
   $('#app').innerHTML=h;
 }
 
-function login(){$('#app').innerHTML=`<div class="c" style="max-width:460px;margin:30px auto"><h2>Phòng thi trực tuyến (${currentSub})</h2><label class="sm">Số báo danh<br><input id="sb" placeholder="VD: 10001" style="width:100%"></label><p><button class="p" onclick="enter()">Vào phòng thi</button></p></div>`}
+// Xử lý danh sách thí sinh từ định dạng MaHS,HoTen,Lop,MaDe,Matkhau
+function rows(){
+  return String(D.roster||'').split('\n').map(l=>{
+    const p=l.split(',').map(x=>x.trim());
+    return {sbd:p[0],ten:p[1],lop:p[2],made:p[3],pass:p[4]};
+  }).filter(r=>r.sbd);
+}
+
+// Form Đăng nhập Thí sinh
+function login(){
+  $('#app').innerHTML=`
+    <div class="c" style="max-width:440px;margin:30px auto">
+      <h2>Phòng thi trực tuyến (${currentSub})</h2>
+      <label class="sm">Mã học sinh (SBD)<br><input id="sb" placeholder="VD: 10001" style="width:100%"></label>
+      <label class="sm" style="margin-top:8px;display:block">Mật khẩu<br><input id="sp" type="password" placeholder="Nhập mật khẩu..." style="width:100%"></label>
+      <p style="margin-top:14px"><button class="p" onclick="enter()">Vào phòng thi</button></p>
+    </div>`;
+}
 
 function exam(){
   const cd=S.cd, q=cd.qs[S.qi], a=S.ans[S.qi]; 
