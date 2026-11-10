@@ -115,6 +115,8 @@ async function adminLogin(){
 }
 
 async function pub(){
+  const errors=validateBankForPublish(D.bank);
+  if(errors.length){alert('Không thể đăng đề. Cần sửa các lỗi sau:\n\n'+errors.slice(0,20).join('\n'));return}
   const r=await api('publish',{key:AK(),cfg:D.cfg,codes:D.cfg.codes,roster:D.roster,gcfg:{emax:D.cfg.emax,thr:D.cfg.thr,gr:D.gr},imgs:D.imgs});
   alert(r.ok?`Đăng thành công môn ${currentSub} (${r.n} mã đề, ${r.hs} thí sinh)!`:r.err);
 }
@@ -239,6 +241,95 @@ async function syncSheetReport(){
   }
 }
 
+function getMatrixData(){
+  let matrix = {};
+  let totals = {mc:0, tf:0, sa:0, essay:0, all:0};
+  
+  D.bank.forEach(q=>{
+    let tag = q.tag && q.tag.trim() !== '' ? q.tag.trim() : 'Chủ đề chung';
+    let lvl = q.level || 'NB';
+    let type = q.type || 'mc';
+    if(!matrix[tag]) matrix[tag] = {NB:{mc:0,tf:0,sa:0,essay:0},TH:{mc:0,tf:0,sa:0,essay:0},VD:{mc:0,tf:0,sa:0,essay:0},VDC:{mc:0,tf:0,sa:0,essay:0}};
+    if(matrix[tag][lvl] && matrix[tag][lvl][type] !== undefined) matrix[tag][lvl][type]++;
+    
+    totals[type]++;
+    totals.all++;
+  });
+  return {matrix, totals};
+}
+
+function exportMatrixExcel(){
+  if(!D.bank || D.bank.length === 0){ alert('Ngân hàng đề trống!'); return; }
+  let {matrix, totals} = getMatrixData();
+  
+  let rowsData = [
+    ["MA TRẬN ĐẶC TẢ ĐỀ THI MÔN " + currentSub.toUpperCase()],
+    [],
+    ["STT", "Chủ đề / Nội dung", "Mức độ đánh giá", "Số câu hỏi theo dạng thức", "", "", "", "Tổng số câu"],
+    ["", "", "", "Nhiều lựa chọn", "Đúng / Sai", "Trả lời ngắn", "Tự luận", ""]
+  ];
+  
+  let stt = 1;
+  Object.keys(matrix).forEach(tag=>{
+    ['NB','TH','VD','VDC'].forEach(lvl=>{
+      let r = matrix[tag][lvl];
+      let sum = r.mc + r.tf + r.sa + r.essay;
+      if(sum > 0){
+        rowsData.push([stt++, tag, LV[lvl], r.mc||0, r.tf||0, r.sa||0, r.essay||0, sum]);
+      }
+    });
+  });
+
+  rowsData.push(["", "TỔNG CỘNG:", "", totals.mc, totals.tf, totals.sa, totals.essay, totals.all]);
+
+  let ws = XLSX.utils.aoa_to_sheet(rowsData);
+  let wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "MaTranDacTa");
+  XLSX.writeFile(wb, `MaTrandacta_${currentSub}.xlsx`);
+}
+
+function exportMatrix(){
+  if(!D.bank || D.bank.length === 0){ alert('Ngân hàng đề trống!'); return; }
+  let {matrix, totals} = getMatrixData();
+
+  let html = `<div style="margin-bottom:10px"><button class="p" onclick="exportMatrixExcel()">📥 Xuất Ma trận ra file Excel (.xlsx)</button></div>
+  <div class="tw"><table>
+    <tr><th rowspan="2">STT</th><th rowspan="2">Chủ đề / Nội dung</th><th rowspan="2">Mức độ đánh giá</th><th colspan="4" style="text-align:center">Số câu hỏi theo dạng thức</th><th rowspan="2">Tổng số câu</th></tr>
+    <tr><th>Nhiều lựa chọn</th><th>Đúng / Sai</th><th>Trả lời ngắn</th><th>Tự luận</th></tr>`;
+  
+  let stt = 1;
+  Object.keys(matrix).forEach(tag=>{
+    ['NB','TH','VD','VDC'].forEach(lvl=>{
+      let r = matrix[tag][lvl];
+      let sum = r.mc + r.tf + r.sa + r.essay;
+      if(sum > 0){
+        html += `<tr>
+          <td>${stt++}</td>
+          <td><b>${esc(tag)}</b></td>
+          <td>${LV[lvl]}</td>
+          <td style="text-align:center">${r.mc || ''}</td>
+          <td style="text-align:center">${r.tf || ''}</td>
+          <td style="text-align:center">${r.sa || ''}</td>
+          <td style="text-align:center">${r.essay || ''}</td>
+          <td style="text-align:center"><b>${sum}</b></td>
+        </tr>`;
+      }
+    });
+  });
+
+  html += `<tr style="background:var(--ps);font-weight:bold">
+    <td colspan="3" style="text-align:right">TỔNG CỘNG:</td>
+    <td style="text-align:center">${totals.mc}</td>
+    <td style="text-align:center">${totals.tf}</td>
+    <td style="text-align:center">${totals.sa}</td>
+    <td style="text-align:center">${totals.essay}</td>
+    <td style="text-align:center;color:var(--pr)">${totals.all}</td>
+  </tr>`;
+
+  html += `</table></div>`;
+  document.getElementById('matrixBox').innerHTML = html;
+}
+
 function admin(){
   try{
     if(!adminAuthed && sessionStorage.getItem('ak')){
@@ -253,7 +344,7 @@ function admin(){
         </div>`;
       return;
     }
-    const tabs=[['bank','1. Ngân hàng đề'],['cd','2. Mã đề & Đăng mạng'],['gs','3. Giám sát & Kết quả'],['gc','4. Phân quyền & Chấm tự luận']];
+    const tabs=[['bank','1. Ngân hàng đề'],['mat','2. Ma trận đề'],['cd','3. Mã đề & Đăng mạng'],['gs','4. Giám sát & Kết quả'],['gc','5. Phân quyền & Chấm tự luận']];
     let h=`<div class="c" style="display:flex;gap:6px;flex-wrap:wrap"><div class="sub-bar"><b>Môn quản lý:</b> <span style="color:var(--pr);font-weight:bold">${currentSub}</span></div><button style="margin-left:auto;background:var(--er);color:#fff;border-color:var(--er)" onclick="sessionStorage.removeItem('ak');adminAuthed=false;show()">Đăng xuất Quản trị</button></div>
     <div class="c" style="display:flex;gap:6px;flex-wrap:wrap">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="go2('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
     
@@ -262,15 +353,26 @@ function admin(){
       <h2>Ngân hàng: ${D.bank.length} câu</h2>
       <button style="margin-left:auto;background:var(--er);color:#fff;border-color:var(--er)" onclick="if(confirm('Xóa toàn bộ ${D.bank.length} câu trong ngân hàng môn ${currentSub}?')){D.bank=[];save();show();}">Xóa toàn bộ ngân hàng</button>
     </div>
-    <div class="c"><div class="tw"><table><tr><th>#</th><th>Chủ đề (Tag)</th><th>Dạng</th><th>Mức</th><th>Nội dung câu hỏi & Đáp án</th><th>Thao tác</th></tr>${D.bank.map((q,i)=>`<tr>
+    <div class="c"><div class="tw"><table><tr><th>#</th><th>Chủ đề (Tag)</th><th>Dạng</th><th>Mức</th><th>Nội dung câu hỏi & phương án</th><th>Đáp án chuẩn</th><th>Thao tác</th></tr>${D.bank.map((q,i)=>`<tr>
       <td>${q.no}</td>
       <td><input style="width:130px;padding:3px 6px" value="${esc(q.tag||'Chủ đề chung')}" placeholder="Tên chủ đề..." onchange="D.bank[${i}].tag=this.value;save()"></td>
       <td><select onchange="D.bank[${i}].type=this.value;save()"><option value="mc" ${q.type==='mc'?'selected':''}>Nhiều lựa chọn</option><option value="tf" ${q.type==='tf'?'selected':''}>Đúng/Sai</option><option value="sa" ${q.type==='sa'?'selected':''}>Trả lời ngắn</option><option value="essay" ${q.type==='essay'?'selected':''}>Tự luận</option></select></td>
       <td><select onchange="D.bank[${i}].level=this.value;save()"><option value="NB" ${q.level==='NB'?'selected':''}>Nhận biết</option><option value="TH" ${q.level==='TH'?'selected':''}>Thông hiểu</option><option value="VD" ${q.level==='VD'?'selected':''}>Vận dụng</option><option value="VDC" ${q.level==='VDC'?'selected':''}>VD cao</option></select></td>
       <td>${ER(String(q.stem).slice(0,160))}${q.type==='mc'&&q.opt&&q.opt.A ? '<br><b>A:</b> '+ER(q.opt.A)+' | <b>B:</b> '+ER(q.opt.B)+' | <b>C:</b> '+ER(q.opt.C)+' | <b>D:</b> '+ER(q.opt.D) : ''}</td>
+      <td>${q.type==='mc'
+        ? `<input style="width:70px" maxlength="1" value="${esc(q.key || (Array.isArray(q.ans)?q.ans[0]||'':''))}" placeholder="A-D" onchange="D.bank[${i}].key=this.value.trim().toUpperCase();save()">`
+        : q.type==='tf'
+          ? `<input style="width:130px" value="${esc((q.keys&&q.keys.length?q.keys:(q.st||[]).map(x=>x.ok)).map(x=>x===true?'Đ':x===false?'S':'').join(','))}" placeholder="Đ,S,Đ,S" onchange="D.bank[${i}].keys=this.value.split(/[,;]/).map(x=>{x=x.trim().toLowerCase();return ['đ','đúng','d','true','t'].includes(x)?true:['s','sai','false','f'].includes(x)?false:null});save()">`
+          : q.type==='sa'
+            ? `<input style="width:150px" value="${esc((q.ans||[]).join(';'))}" placeholder="Đáp án;đáp án khác" onchange="D.bank[${i}].ans=this.value.split(';').map(x=>x.trim()).filter(Boolean);save()">`
+            : `<span class="mu">Chấm thủ công</span>`}</td>
       <td><button style="color:var(--er);border-color:var(--er);padding:2px 6px;font-size:0.8rem" onclick="D.bank.splice(${i},1);D.bank.forEach((item,idx)=>item.no=idx+1);save();show()">Xóa</button></td>
     </tr>`).join('')}</table></div></div>`;
     
+    if(tab==='mat'){
+      h+=`<div class="c"><h2>Ma trận đặc tả đề thi môn ${currentSub}</h2><p><button class="p" onclick="exportMatrix()">Tạo / Xem ma trận từ ngân hàng</button></p><div id="matrixBox" style="margin-top:10px"><p class="mu">Bấm nút trên để thống kê ma trận câu hỏi theo chủ đề và mức độ.</p></div></div>`;
+    }
+
     if(tab==='cd'){
       const c=D.cfg;
       h+=`<div class="c"><h2>Sinh mã đề môn ${currentSub}</h2>
@@ -301,6 +403,55 @@ function rows(){
     const p=l.split(',').map(x=>x.trim());
     return {sbd:p[0],ten:p[1],lop:p[2],made:p[3],pass:p[4]};
   }).filter(r=>r.sbd);
+}
+
+
+function ommlToLatex(node){
+  const kids = Array.from(node.children || []);
+  const find = (name) => kids.find(x => x.localName === name);
+  const body = (x) => x ? Array.from(x.children || []).map(ommlToLatex).join('') : '';
+  const val = (x) => x ? (x.getAttribute('val') || x.getAttribute('m:val') || '') : '';
+  const prop = (parent, name) => parent ? Array.from(parent.children || []).find(x => x.localName === name) : null;
+  const tag = node.localName;
+  if(tag === 't') return node.textContent || '';
+  if(tag.endsWith('Pr') || tag === 'ctrlPr') return '';
+  if(tag === 'f'){
+    return `\\frac{${body(find('num'))}}{${body(find('den'))}}`;
+  }
+  if(tag === 'sSup') return `{${body(find('e'))}}^{${body(find('sup'))}}`;
+  if(tag === 'sSub') return `{${body(find('e'))}}_{${body(find('sub'))}}`;
+  if(tag === 'sSubSup') return `{${body(find('e'))}}_{${body(find('sub'))}}^{${body(find('sup'))}}`;
+  if(tag === 'rad'){
+    const degree = body(find('deg'));
+    const expr = body(find('e'));
+    return degree ? `\\sqrt[${degree}]{${expr}}` : `\\sqrt{${expr}}`;
+  }
+  if(tag === 'd'){
+    const pr = find('dPr');
+    const begNode = prop(pr, 'begChr'), endNode = prop(pr, 'endChr');
+    const beg = begNode ? val(begNode) : '(';
+    const end = endNode ? val(endNode) : ')';
+    return `\\left${beg || '('}${body(find('e'))}\\right${end || ')'}`;
+  }
+  if(tag === 'nary'){
+    const pr = find('naryPr');
+    const chrNode = prop(pr, 'chr');
+    const chr = chrNode ? val(chrNode) : '∫';
+    const op = ({'∫':'\\int','∬':'\\iint','∭':'\\iiint','∑':'\\sum','∏':'\\prod'}[chr] || chr);
+    const sub = body(find('sub')), sup = body(find('sup')), expr = body(find('e'));
+    return `${op}${sub ? `_{${sub}}` : ''}${sup ? `^{${sup}}` : ''}${expr}`;
+  }
+  if(tag === 'func') return `${body(find('fName'))}\\left(${body(find('e'))}\\right)`;
+  if(tag === 'bar') return `\\overline{${body(find('e'))}}`;
+  if(tag === 'acc') {
+    const pr = find('accPr');
+    const chrNode = prop(pr, 'chr');
+    const chr = chrNode ? val(chrNode) : '^';
+    return `${({'̂':'\\hat','̃':'\\tilde','̅':'\\bar'}[chr] || '\\hat')}{${body(find('e'))}}`;
+  }
+  if(tag === 'oMath' || tag === 'oMathPara' || tag === 'e' || tag === 'num' || tag === 'den' || tag === 'r')
+    return kids.map(ommlToLatex).join('');
+  return kids.map(ommlToLatex).join('');
 }
 
 async function importFile(e){
@@ -336,26 +487,50 @@ async function importFile(e){
       const parser = new DOMParser();
       const xml = parser.parseFromString(xmlDoc, "text/xml");
       const paragraphs = xml.getElementsByTagName("w:p");
-      
+
+      const imageRelMap = {};
+      const relFile = zipContent.file("word/_rels/document.xml.rels");
+      if(relFile){
+        const relXml = parser.parseFromString(await relFile.async("string"), "text/xml");
+        Array.from(relXml.getElementsByTagName("Relationship")).forEach(rel=>{
+          const target = rel.getAttribute("Target") || "";
+          if(target.includes("media/")){
+            const base = target.split('/').pop().replace(/\.[^.]+$/,'');
+            imageRelMap[rel.getAttribute("Id")] = base;
+          }
+        });
+      }
+      const relNs = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+      const wordNs = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+      const mathNs = "http://schemas.openxmlformats.org/officeDocument/2006/math";
+
+      function extractDocNode(node){
+        if(node.nodeType !== 1) return "";
+        const ns = node.namespaceURI || "";
+        const name = node.localName;
+        if(ns === mathNs && name === "oMath") return `$${ommlToLatex(node)}$`;
+        // Giữ lại định dạng gạch chân của từng run Word để nhận diện đáp án.
+        if(ns === wordNs && name === "r"){
+          const rPr = Array.from(node.children || []).find(x => x.namespaceURI === wordNs && x.localName === "rPr");
+          const u = rPr ? Array.from(rPr.children || []).find(x => x.namespaceURI === wordNs && x.localName === "u") : null;
+          const uVal = u ? (u.getAttributeNS(wordNs, "val") || u.getAttribute("w:val") || "single") : "none";
+          const content = Array.from(node.childNodes || []).filter(x => !(x.nodeType === 1 && x.namespaceURI === wordNs && x.localName === "rPr")).map(extractDocNode).join("");
+          return u && !["none", "0", "false"].includes(String(uVal).toLowerCase()) ? `⟪U⟫${content}⟪/U⟫` : content;
+        }
+        if(ns === wordNs && name === "t") return node.textContent || "";
+        if(ns === wordNs && name === "tab") return " ";
+        if(ns === wordNs && name === "br") return " ";
+        if(name === "blip"){
+          const rid = node.getAttributeNS(relNs, "embed") || node.getAttribute("r:embed");
+          const imgId = imageRelMap[rid];
+          return imgId && D.imgs[imgId] ? ` ⟪IMG:${imgId}⟫ ` : " [HÌNH MINH HỌA] ";
+        }
+        return Array.from(node.childNodes || []).map(extractDocNode).join("");
+      }
+
       let structuredLines = [];
       for(let p of paragraphs){
-        let rElements = p.getElementsByTagName("w:r");
-        let paraFormatted = "";
-        let imgCounter = 0;
-        for(let re of rElements){
-          let ts = re.getElementsByTagName("w:t");
-          for(let t of ts) paraFormatted += t.textContent;
-          
-          let blips = re.getElementsByTagName("a:blip");
-          if(blips.length > 0){
-            let imgKeys = Object.keys(D.imgs);
-            if(imgKeys.length > 0){
-              let assignedId = imgKeys[imgCounter % imgKeys.length];
-              paraFormatted += ` ⟪IMG:${assignedId}⟫ `;
-              imgCounter++;
-            }
-          }
-        }
+        const paraFormatted = Array.from(p.childNodes || []).map(extractDocNode).join("");
         if(paraFormatted.trim()) structuredLines.push(paraFormatted.trim());
       }
 
@@ -366,118 +541,138 @@ async function importFile(e){
   }
 }
 
-function parseTextToBank(txt){
-  const rawLines = txt.split('\n').map(l=>l.trim()).filter(Boolean);
-  let bank = [], cur = null;
-  let currentTag = 'CHỦ ĐỀ CHUNG';
-  let defaultType = 'mc';
-
-  rawLines.forEach(l=>{
-    if(/phần\s*1/i.test(l) || /dạng\s*trắc\s*nghiệm/i.test(l)){ defaultType = 'mc'; return; }
-    if(/phần\s*2/i.test(l) || /đúng\s*sai/i.test(l)){ defaultType = 'tf'; return; }
-    if(/phần\s*3/i.test(l) || /trả\s*lời\s*ngắn/i.test(l)){ defaultType = 'sa'; return; }
-    if(/phần\s*4/i.test(l) || /tự\s*luận/i.test(l)){ defaultType = 'essay'; return; }
-
-    if(/^CHỦ\s*ĐỀ\s*[:\–\-]/i.test(l) || /^TAG\s*[:\–\-]/i.test(l)){
-      let extracted = l.replace(/^CHỦ\s*ĐỀ\s*[:\–\-]/i, '').replace(/^TAG\s*[:\–\-]/i, '').trim();
-      if(extracted) currentTag = extracted;
-      return;
-    }
-
-    if(/^CÂU\s*\d+/i.test(l) || /^Q\s*\d+/i.test(l) || /^(?:Câu|Bài)\s*\d+[\.\:]/i.test(l)){
-      if(cur) bank.push(cur);
-
-      let stemText = l.replace(/^(?:CÂU|Bài|Q)\s*\d+\s*[\.\:]\s*/i, '').trim();
-      
-      let levelMatch = stemText.match(/\[(NB|TH|VD|VDC)\]/i);
-      let levelVal = levelMatch ? levelMatch[1].toUpperCase() : 'NB';
-      stemText = stemText.replace(/\[(NB|TH|VD|VDC)\]/i, '').trim();
-
-      let typeVal = defaultType;
-      if(/\[(?:ĐS|Đúng[\/\s]Sai)\]/i.test(stemText) || /\[TF\]/i.test(stemText)){ typeVal = 'tf'; }
-      else if(/\[(?:TLN|Trả lời ngắn)\]/i.test(stemText)){ typeVal = 'sa'; }
-      else if(/\[(?:TL|Tự luận)\]/i.test(stemText)){ typeVal = 'essay'; }
-      
-      stemText = stemText.replace(/\[(ĐS|Đúng[\/\s]Sai|TF|TLN|Trả lời ngắn|TL|Tự luận)\]/gi, '').trim();
-
-      cur = {
-        type: typeVal, 
-        level: levelVal, 
-        tag: currentTag, 
-        stem: stemText, 
-        opt: {A:'',B:'',C:'',D:''}, 
-        st: [
-          {k:'a',t:'Phát biểu a',lv:'NB',ok:true},
-          {k:'b',t:'Phát biểu b',lv:'TH',ok:true},
-          {k:'c',t:'Phát biểu c',lv:'VD',ok:true},
-          {k:'d',t:'Phát biểu d',lv:'VDC',ok:true}
-        ],
-        ans: typeVal==='sa'?['']:['A'], 
-        sol:''
-      };
-      return;
-    }
-
-    if(cur){
-      if(cur.type === 'tf' && (/^[a-d]\s*[\.\)]/i.test(l) || /^[a-d]\s*\[/i.test(l))){
-        let idxChar = l[0].toLowerCase();
-        let idx = {'a':0,'b':1,'c':2,'d':3}[idxChar];
-        let cleanL = l.replace(/^[a-d]\s*[\.\)]\s*/i, '').trim();
-        let lvlSubMatch = cleanL.match(/\[(NB|TH|VD|VDC)\]/i);
-        let lvlSub = lvlSubMatch ? lvlSubMatch[1].toUpperCase() : 'NB';
-        cleanL = cleanL.replace(/\[(NB|TH|VD|VDC)\]/gi, '').replace(/^#/, '').trim();
-        
-        if(idx !== undefined && cur.st[idx]){
-          cur.st[idx].t = cleanL;
-          cur.st[idx].lv = lvlSub;
-        }
-        return;
-      }
-
-      // Xử lý quét đáp án A, B, C, D chuẩn xác theo mọi định dạng dòng
-      let optMatch = l.match(/^([A-D])[\.\)]\s*(.*)/);
-      if(optMatch){
-        let k = optMatch[1].toUpperCase();
-        let val = optMatch[2].trim();
-        if(val) cur.opt[k] = val;
-        return;
-      }
-
-      let matches = [...l.matchAll(/([A-D])[\.\)]\s*([^A-D\n]+?)(?=\s+[A-D]\.|$)/g)];
-      if(matches.length > 0){
-        matches.forEach(m=>{
-          let k = m[1].toUpperCase();
-          let val = m[2].trim();
-          if(val) cur.opt[k] = val;
-        });
-        return;
-      }
-
-      if(/^\[HDG\]/i.test(l) || /^HDG:/i.test(l)){
-        cur.sol = l;
-        return;
-      }
-
-      if(cur.sol){
-        cur.sol += '\n' + l;
-      } else {
-        cur.stem += '\n' + l;
-      }
-    }
+function parseAnswerTF_(raw){
+  const out = [null,null,null,null];
+  const pairs = raw.split(/[;|]/).map(x=>x.trim()).filter(Boolean);
+  pairs.forEach((part, pos)=>{
+    let m = part.match(/^([a-d])\s*[:=.)-]?\s*(đúng|sai|đ|s|true|false|t|f)$/i);
+    let idx = m ? 'abcd'.indexOf(m[1].toLowerCase()) : pos;
+    let val = m ? m[2] : part;
+    if(idx < 0 || idx > 3) return;
+    val = String(val).trim().toLowerCase();
+    if(['đ','đúng','d','true','t'].includes(val)) out[idx] = true;
+    else if(['s','sai','false','f'].includes(val)) out[idx] = false;
   });
+  return out;
+}
 
-  if(cur) bank.push(cur);
+function validateBankForPublish(bank){
+  const errors=[];
+  (bank||[]).forEach((q,i)=>{
+    const label=`Câu ${q.no||i+1}`;
+    if(!String(q.stem||'').trim()) errors.push(`${label}: thiếu nội dung câu hỏi.`);
+    if(q.type==='mc'){
+      ['A','B','C','D'].forEach(k=>{if(!String(q.opt?.[k]||'').trim()) errors.push(`${label}: thiếu phương án ${k}.`)});
+      const key=String(q.key||(Array.isArray(q.ans)?q.ans[0]:'')||'').trim().toUpperCase();
+      if(!/^[ABCD]$/.test(key)) errors.push(`${label}: cần gạch chân đúng một nhãn A/B/C/D hoặc khai báo [DAPAN].`);
+    }else if(q.type==='tf'){
+      if(!Array.isArray(q.st)||q.st.length!==4||q.st.some(x=>!String(x.t||'').trim())) errors.push(`${label}: phải có đủ nội dung 4 ý a, b, c, d.`);
+      const keys=Array.isArray(q.keys)&&q.keys.length?q.keys:(q.st||[]).map(x=>x.ok);
+      if(keys.length!==4||keys.some(v=>v!==true&&v!==false)) errors.push(`${label}: cần gạch chân từ Đúng/Sai ở từng ý a, b, c, d hoặc khai báo [DAPAN] đủ 4 ý.`);
+    }else if(q.type==='sa'){
+      if(!Array.isArray(q.ans)||!q.ans.some(v=>String(v).trim())) errors.push(`${label}: thiếu đáp án trả lời ngắn (Trả lời: [[...]] hoặc [DAPAN]).`);
+    }else if(q.type!=='essay') errors.push(`${label}: dạng câu hỏi không hợp lệ.`);
+  });
+  return errors;
+}
 
-  if(bank.length > 0){
-    D.bank = bank.map((q,i)=>({...q, no:i+1}));
-    save(); show();
-    alert(`Đã nhập thành công ${bank.length} câu hỏi vào ngân hàng đề!`);
-  } else {
-    alert('Không tìm thấy cấu trúc câu hỏi phù hợp trong file Word.');
-  }
+function parseTextToBank(txt){
+  const rawLines=String(txt||'').split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const bank=[]; let cur=null, currentTag='CHỦ ĐỀ CHUNG', defaultType='mc';
+  const markedSegments = line => [...String(line||'').matchAll(/⟪U⟫([\s\S]*?)⟪\/U⟫/g)].map(m=>m[1].trim()).filter(Boolean);
+  const cleanMarks = line => String(line||'').replace(/⟪U⟫([\s\S]*?)⟪\/U⟫/g,'$1');
+  const finish=()=>{if(cur){
+    if(cur.type==='tf' && !cur.keysExplicit && cur.st.every(x=>x.ok===true || x.ok===false)) cur.keys=cur.st.map(x=>x.ok);
+    bank.push(cur);cur=null;
+  }};
+  rawLines.forEach(rawLine=>{
+    const marked=markedSegments(rawLine);
+    const l=cleanMarks(rawLine).trim();
+    if(/^PHẦN\s*1\b/i.test(l)||/trắc nghiệm nhiều lựa chọn/i.test(l)){defaultType='mc';return;}
+    if(/^PHẦN\s*2\b/i.test(l)||/trắc nghiệm đúng\s*\/\s*sai/i.test(l)){defaultType='tf';return;}
+    if(/^PHẦN\s*3\b/i.test(l)||/trắc nghiệm trả lời ngắn/i.test(l)){defaultType='sa';return;}
+    if(/^PHẦN\s*4\b/i.test(l)||/^tự luận/i.test(l)){defaultType='essay';return;}
+    if(/^CHỦ\s*ĐỀ\s*[:\-–]/i.test(l)||/^TAG\s*[:\-–]/i.test(l)){
+      currentTag=l.replace(/^(?:CHỦ\s*ĐỀ|TAG)\s*[:\-–]\s*/i,'').trim()||currentTag;return;
+    }
+    if(/^(?:CÂU|BÀI|Q)\s*\d+\s*[.):]/i.test(l)){
+      finish();
+      let stem=l.replace(/^(?:CÂU|BÀI|Q)\s*\d+\s*[.):]\s*/i,'').trim();
+      const lm=stem.match(/\[(NB|TH|VD|VDC)\]/i), level=lm?lm[1].toUpperCase():'NB';
+      let type=defaultType;
+      if(/\[(?:MC)\]/i.test(stem)) type='mc';
+      if(/\[(?:TF|ĐS|ĐÚNG\s*\/\s*SAI)\]/i.test(stem)) type='tf';
+      if(/\[(?:SA|TLN|TRẢ\s*LỜI\s*NGẮN)\]/i.test(stem)) type='sa';
+      if(/\[(?:TL|TỰ\s*LUẬN)\]/i.test(stem)) type='essay';
+      stem=stem.replace(/\[(?:NB|TH|VD|VDC|MC|TF|ĐS|ĐÚNG\s*\/\s*SAI|SA|TLN|TRẢ\s*LỜI\s*NGẮN|TL|TỰ\s*LUẬN)\]/gi,'').trim();
+      cur={type,level,tag:currentTag,stem,opt:{A:'',B:'',C:'',D:''},st:[
+        {k:'a',t:'',lv:'NB',ok:null},{k:'b',t:'',lv:'TH',ok:null},
+        {k:'c',t:'',lv:'VD',ok:null},{k:'d',t:'',lv:'VDC',ok:null}
+      ],key:'',keyExplicit:false,keys:[],keysExplicit:false,ans:[],sol:'',rubric:''};
+      return;
+    }
+    if(!cur) return;
+
+    let am=l.match(/^\[(?:DAPAN|ĐÁP\s*ÁN)\]\s*(.+)$/i)||l.match(/^(?:ĐÁP\s*ÁN|ĐA|KEY)\s*[:：]\s*(.+)$/i);
+    if(am){
+      const raw=am[1].trim();
+      if(cur.type==='mc'){cur.key=raw.replace(/^(?:đáp\s*án)\s*/i,'').replace(/[.\s]/g,'').toUpperCase();cur.keyExplicit=true;}
+      else if(cur.type==='tf'){cur.keys=parseAnswerTF_(raw);cur.keysExplicit=true;}
+      else if(cur.type==='sa') cur.ans=raw.split(/\s*\|\|\s*|\s*;\s*/).map(x=>x.trim()).filter(Boolean);
+      return;
+    }
+    if(/^\[HDCHAM\]/i.test(l)) {cur.rubric=l.replace(/^\[HDCHAM\]\s*/i,'').trim();return;}
+    if(/^\[HDG\]/i.test(l)||/^HDG\s*:/i.test(l)) {cur.sol=l.replace(/^\[HDG\]\s*/i,'').replace(/^HDG\s*:\s*/i,'').trim();return;}
+    if(cur.type==='sa'&&/^TRẢ\s*LỜI\s*:/i.test(l)){
+      const m=l.match(/\[\[(.*?)\]\]/); const raw=m?m[1]:l.replace(/^TRẢ\s*LỜI\s*:/i,'').trim();
+      cur.ans=raw.split(/\s*\|\|\s*|\s*;\s*/).map(x=>x.trim()).filter(Boolean);return;
+    }
+    if(cur.type==='tf'&&/^[a-d]\s*[.)]/i.test(l)){
+      const idx='abcd'.indexOf(l[0].toLowerCase());
+      let body=l.replace(/^[a-d]\s*[.)]\s*/i,'').replace(/^#/,'').trim();
+      const level=body.match(/\[(NB|TH|VD|VDC)\]/i); if(level) cur.st[idx].lv=level[1].toUpperCase();
+      body=body.replace(/\[(NB|TH|VD|VDC)\]/ig,'').replace(/^#/,'').trim();
+      // QUY ƯỚC ĐÚNG/SAI CỦA THẦY: gạch chân nhãn a)/b)/c)/d) = ý ĐÚNG;
+      // nhãn không gạch chân = ý SAI. Không suy luận từ chữ trong nội dung phát biểu.
+      // Chỉ nhận diện dấu gạch chân nếu run được gạch chân đúng là nhãn của ý hiện tại.
+      const underlinedLabel = marked.some(x => {
+        const m = String(x).trim().match(/^([a-d])(?:[.)])?$/i);
+        return !!m && 'abcd'.indexOf(m[1].toLowerCase()) === idx;
+      });
+      cur.st[idx].ok = underlinedLabel;
+      cur.st[idx].t=body;return;
+    }
+    // Tách phương án kể cả khi Word ghép sát nhãn, ví dụ "A. ...B. ...".
+    const labelRe=/(?:^|[\s.])([A-D])[.)]\s*/g;
+    const labels=[]; let lmOpt;
+    while((lmOpt=labelRe.exec(l))!==null) labels.push({key:lmOpt[1].toUpperCase(), start:lmOpt.index+lmOpt[0].length});
+    if(labels.length){
+      labels.forEach((item,i)=>{
+        const end=i+1<labels.length ? labels[i+1].start-labels[i+1].key.length-2 : l.length;
+        const value=l.slice(item.start,Math.max(item.start,end)).trim();
+        if(value) cur.opt[item.key]=value;
+      });
+      const markedKeys=marked.map(x=>x.match(/^([A-D])(?:[.)])?$/i)).filter(Boolean).map(x=>x[1].toUpperCase());
+      if(!cur.keyExplicit){if(markedKeys.length===1) cur.key=markedKeys[0];
+      else if(markedKeys.length>1) cur.key='MULTIPLE';}
+      return;
+    }
+    if(cur.sol) cur.sol+='\n'+l;
+    else if(cur.rubric) cur.rubric+='\n'+l;
+    else cur.stem+='\n'+l;
+  });
+  finish();
+  if(bank.length){
+    D.bank=bank.map((q,i)=>({...q,no:i+1}));
+    save();show();
+    const errors=validateBankForPublish(D.bank);
+    alert(`Đã nhập ${bank.length} câu. ${errors.length?`Có ${errors.length} lỗi cần bổ sung đáp án/cấu trúc trước khi sinh mã đề.`:'Cấu trúc đáp án đã hợp lệ.'}`+(errors.length?'\n\n'+errors.slice(0,12).join('\n')+(errors.length>12?'\n…':'' ):'') );
+  }else alert('Không tìm thấy cấu trúc câu hỏi phù hợp trong file Word.');
 }
 
 function gen(){
+  const errors=validateBankForPublish(D.bank);
+  if(errors.length){alert('Không thể sinh mã đề. Cần hoàn thiện file Word trước:\n\n'+errors.slice(0,20).join('\n'));return}
   const n = parseInt(document.getElementById('nc').value) || 4;
   const targetCount = D.bank.length > 0 ? D.bank.length : 22;
   
@@ -485,6 +680,11 @@ function gen(){
   for(let i = 1; i <= n; i++){
     let codeStr = String(100 + i).padStart(4, '0');
     let shuffledQs = JSON.parse(JSON.stringify(D.bank));
+    // Fisher-Yates: mỗi mã đề có thứ tự câu hỏi riêng, giữ nguyên q.no để đối chiếu chấm tự luận.
+    for(let j = shuffledQs.length - 1; j > 0; j--){
+      const k = Math.floor(Math.random() * (j + 1));
+      [shuffledQs[j], shuffledQs[k]] = [shuffledQs[k], shuffledQs[j]];
+    }
     
     codes.push({
       code: codeStr, 
