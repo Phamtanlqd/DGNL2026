@@ -512,7 +512,6 @@ function parseTextToBank(txt){
     }
 
     if(cur){
-      // Nhận diện ý a, b, c, d nếu câu hiện tại là Đúng/Sai
       if(cur.type === 'tf' && (/^[a-d]\s*[\.\)]/i.test(l) || /^[a-d]\s*\[/i.test(l))){
         let idxChar = l[0].toLowerCase();
         let idx = {'a':0,'b':1,'c':2,'d':3}[idxChar];
@@ -528,7 +527,6 @@ function parseTextToBank(txt){
         return;
       }
 
-      // Nhận diện đáp án A, B, C, D (cho phép cả trường hợp dính liền hoặc nằm trên các dòng riêng biệt)
       let optMatch = l.match(/^([A-D])[\.\)]\s*(.*)/);
       if(optMatch){
         let k = optMatch[1].toUpperCase();
@@ -536,7 +534,6 @@ function parseTextToBank(txt){
         return;
       }
 
-      // Hỗ trợ bắt các dòng A., B., C., D nằm chung trên một dòng hoặc dải rác
       let multiOpt = l.match(/([A-D])\.\s*([^A-D\n]+)/g);
       if(multiOpt && multiOpt.length >= 2){
         multiOpt.forEach(o=>{
@@ -602,6 +599,7 @@ function login(){
 
 function exam(){
   const cd=S.cd, q=cd.qs[S.qi], a=S.ans[S.qi]; 
+  q.opt = q.opt || {A:'', B:'', C:'', D:''};
   let b='';
 
   if(q.type==='mc') {
