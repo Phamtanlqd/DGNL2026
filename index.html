@@ -320,12 +320,12 @@ function admin(){
       <h2>Ngân hàng: ${D.bank.length} câu</h2>
       <button style="margin-left:auto;background:var(--er);color:#fff;border-color:var(--er)" onclick="if(confirm('Xóa toàn bộ ${D.bank.length} câu trong ngân hàng môn ${currentSub}?')){D.bank=[];save();show();}">Xóa toàn bộ ngân hàng</button>
     </div>
-    <div class="c"><div class="tw"><table><tr><th>#</th><th>Chủ đề (Tag)</th><th>Dạng</th><th>Mức</th><th>Nội dung câu hỏi</th><th>Thao tác</th></tr>${D.bank.map((q,i)=>`<tr>
+    <div class="c"><div class="tw"><table><tr><th>#</th><th>Chủ đề (Tag)</th><th>Dạng</th><th>Mức</th><th>Nội dung câu hỏi & Đáp án</th><th>Thao tác</th></tr>${D.bank.map((q,i)=>`<tr>
       <td>${q.no}</td>
       <td><input style="width:130px;padding:3px 6px" value="${esc(q.tag||'Chủ đề chung')}" placeholder="Tên chủ đề..." onchange="D.bank[${i}].tag=this.value;save()"></td>
       <td>${TY[q.type]}</td>
       <td><select onchange="D.bank[${i}].level=this.value;save()"><option value="NB" ${q.level==='NB'?'selected':''}>Nhận biết</option><option value="TH" ${q.level==='TH'?'selected':''}>Thông hiểu</option><option value="VD" ${q.level==='VD'?'selected':''}>Vận dụng</option><option value="VDC" ${q.level==='VDC'?'selected':''}>VD cao</option></select></td>
-      <td>${esc(String(q.stem).slice(0,120))}</td>
+      <td>${esc(String(q.stem).slice(0,180))}${q.opt && q.opt.A ? ' | A: '+esc(q.opt.A)+' B: '+esc(q.opt.B)+' C: '+esc(q.opt.C)+' D: '+esc(q.opt.D) : ''}</td>
       <td><button style="color:var(--er);border-color:var(--er);padding:2px 6px;font-size:0.8rem" onclick="D.bank.splice(${i},1);D.bank.forEach((item,idx)=>item.no=idx+1);save();show()">Xóa</button></td>
     </tr>`).join('')}</table></div></div>`;
     
@@ -366,7 +366,7 @@ function rows(){
   }).filter(r=>r.sbd);
 }
 
-// Đọc file Word (.docx) chuyên sâu & bóc tách sạch 100% phần [HDG] dính vào câu
+// Đọc file Word (.docx) giữ nguyên vẹn 100% nội dung câu hỏi và phân tách chuẩn chủ đề
 async function importFile(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -406,22 +406,19 @@ async function importFile(e){
 function parseTextToBank(txt){
   const rawLines = txt.split('\n').map(l=>l.trim()).filter(Boolean);
   let bank = [], cur = null;
-  let currentTag = 'HÀM SỐ';
-  let isHDG = false;
+  let currentTag = 'CHỦ ĐỀ CHUNG';
 
   rawLines.forEach(l=>{
     // 1. Nhận diện dòng chuyển Chủ đề
     if(/^CHỦ\s*ĐỀ\s*[:\–\-]/i.test(l) || /^TAG\s*[:\–\-]/i.test(l)){
       let extracted = l.replace(/^CHỦ\s*ĐỀ\s*[:\–\-]/i, '').replace(/^TAG\s*[:\–\-]/i, '').trim();
       if(extracted) currentTag = extracted;
-      isHDG = false;
       return;
     }
 
-    // 2. Bắt đầu một câu mới
+    // 2. Bắt đầu một câu hỏi mới
     if(/^CÂU\s*\d+/i.test(l) || /^Q\s*\d+/i.test(l) || /^\d+\./.test(l)){
       if(cur) bank.push(cur);
-      isHDG = false;
 
       let stemText = l.replace(/^(?:CÂU\s*\d+|Q\s*\d+|\d+)\s*[\.\:]\s*/i, '').trim();
       
@@ -435,22 +432,25 @@ function parseTextToBank(txt){
     }
 
     // 3. Đọc các lựa chọn A, B, C, D
-    if(cur && !isHDG && /^[A-D]\./i.test(l)){
+    if(cur && /^[A-D]\./i.test(l)){
       let k = l[0].toUpperCase();
       cur.opt[k] = l.slice(2).trim();
       return;
     }
 
-    // 4. Nhận diện phần Hướng dẫn giải [HDG] -> Bỏ qua không cho dính vào thân câu
-    if(/^\[HDG\]/i.test(l) || /^HDG:/i.test(l) || /Vị trí đặt lời giải/i.test(l)){
-      isHDG = true;
-      if(cur) cur.sol = l;
+    // 4. Đọc phần lời giải [HDG] nếu có
+    if(cur && (/^\[HDG\]/i.test(l) || /^HDG:/i.test(l))){
+      cur.sol = l;
       return;
     }
 
-    // 5. Nếu đang ở dòng text thuộc đề bài câu hiện tại
-    if(cur && !isHDG){
-      cur.stem += '\n' + l;
+    // 5. Nếu đang ở dòng text tiếp theo của đề bài hoặc lời giải
+    if(cur){
+      if(cur.sol){
+        cur.sol += '\n' + l;
+      } else {
+        cur.stem += '\n' + l;
+      }
     }
   });
 
@@ -459,7 +459,7 @@ function parseTextToBank(txt){
   if(bank.length > 0){
     D.bank = bank.map((q,i)=>({...q, no:i+1}));
     save(); show();
-    alert(`Đã bóc tách thành công ${bank.length} câu hỏi chuẩn sạch từ file Word!`);
+    alert(`Đã nhập thành công ${bank.length} câu hỏi giữ nguyên vẹn nội dung từ file Word!`);
   } else {
     alert('Không tìm thấy cấu trúc câu hỏi phù hợp trong file Word.');
   }
