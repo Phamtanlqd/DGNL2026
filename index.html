@@ -17,7 +17,7 @@ button{cursor:pointer;border:1px solid var(--bd);background:var(--cd);border-rad
 button.p{background:var(--pr);border-color:var(--pr);color:#fff}button.on{background:var(--ps);border-color:var(--pr)}button:disabled{opacity:.5}
 input,textarea,select{background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:7px}
 textarea{width:100%;min-height:80px}
-.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.88rem}th,td{border:1px solid var(--bd);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--bg)}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%}.tw table{font-size:.88rem}th,td{border:1px solid var(--bd);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--bg)}
 .g{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
 .bd{display:inline-block;font-size:.75rem;padding:1px 8px;border-radius:99px;background:var(--ps);color:var(--pr)}.bd.w{background:var(--ws);color:var(--wa)}
 .ex{display:grid;grid-template-columns:1fr 210px;gap:12px;align-items:start}@media(max-width:800px){.ex{grid-template-columns:1fr}}
@@ -131,7 +131,6 @@ function go2(t){tab=t;if(t==='gs'&&API_URL)refresh();else if(t==='gc')gcLoad();e
 let _t;
 function push(){if(!API_URL||!S||S.done||mode!=='hs')return;clearTimeout(_t);_t=setTimeout(()=>api('save',{sbd:S.sbd,subject:currentSub,token:S.token,ans:S.ans,viol:S.viol,qi:S.qi}),2500)}
 
-// Đăng nhập Thí sinh (SBD + Pass)
 async function enter(){
   const sbd=$('#sb').value.trim(), pass=$('#sp').value.trim();
   if(!sbd) return;
@@ -188,7 +187,6 @@ function gcTab(){
  </table></div></div>`;
 }
 
-// Đăng nhập Giám khảo (User/PIN + Pass)
 function gvView(){
   GV?gvMain():$('#app').innerHTML=`
     <div class="c" style="max-width:420px;margin:30px auto">
@@ -241,9 +239,7 @@ async function syncSheetReport(){
   }
 }
 
-// Hàm xuất ma trận đặc tả chuẩn sư phạm có dòng tổng cộng
-function exportMatrix(){
-  if(!D.bank || D.bank.length === 0){ alert('Ngân hàng đề trống!'); return; }
+function getMatrixData(){
   let matrix = {};
   let totals = {mc:0, tf:0, sa:0, essay:0, all:0};
   
@@ -257,15 +253,50 @@ function exportMatrix(){
     totals[type]++;
     totals.all++;
   });
+  return {matrix, totals};
+}
 
-  let html = `<div class="tw"><table>
-    <tr><th rowspan="2">STT</th><th rowspan="2">Chủ đề / Nội dung</th><th rowspan="2">Mức độ đánh giá</th><th colspan="4">Số câu hỏi theo dạng thức</th><th rowspan="2">Tổng số câu</th></tr>
+function exportMatrixExcel(){
+  if(!D.bank || D.bank.length === 0){ alert('Ngân hàng đề trống!'); return; }
+  let {matrix, totals} = getMatrixData();
+  
+  let rowsData = [
+    ["MA TRẬN ĐẶC TẢ ĐỀ THI MÔN " + currentSub.toUpperCase()],
+    [],
+    ["STT", "Chủ đề / Nội dung", "Mức độ đánh giá", "Số câu hỏi theo dạng thức", "", "", "", "Tổng số câu"],
+    ["", "", "", "Nhiều lựa chọn", "Đúng / Sai", "Trả lời ngắn", "Tự luận", ""]
+  ];
+  
+  let stt = 1;
+  Object.keys(matrix).forEach(tag=>{
+    ['NB','TH','VD','VDC'].forEach(lvl=>{
+      let r = matrix[tag][lvl];
+      let sum = r.mc + r.tf + r.sa + r.essay;
+      if(sum > 0){
+        rowsData.push([stt++, tag, LV[lvl], r.mc||0, r.tf||0, r.sa||0, r.essay||0, sum]);
+      }
+    });
+  });
+
+  rowsData.push(["", "TỔNG CỘNG:", "", totals.mc, totals.tf, totals.sa, totals.essay, totals.all]);
+
+  let ws = XLSX.utils.aoa_to_sheet(rowsData);
+  let wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "MaTranDacTa");
+  XLSX.writeFile(wb, `MaTrandacta_${currentSub}.xlsx`);
+}
+
+function exportMatrix(){
+  if(!D.bank || D.bank.length === 0){ alert('Ngân hàng đề trống!'); return; }
+  let {matrix, totals} = getMatrixData();
+
+  let html = `<div style="margin-bottom:10px"><button class="p" onclick="exportMatrixExcel()">📥 Xuất Ma trận ra file Excel (.xlsx)</button></div>
+  <div class="tw"><table>
+    <tr><th rowspan="2">STT</th><th rowspan="2">Chủ đề / Nội dung</th><th rowspan="2">Mức độ đánh giá</th><th colspan="4" style="text-align:center">Số câu hỏi theo dạng thức</th><th rowspan="2">Tổng số câu</th></tr>
     <tr><th>Nhiều lựa chọn</th><th>Đúng / Sai</th><th>Trả lời ngắn</th><th>Tự luận</th></tr>`;
   
   let stt = 1;
-  let tags = Object.keys(matrix);
-  
-  tags.forEach(tag=>{
+  Object.keys(matrix).forEach(tag=>{
     ['NB','TH','VD','VDC'].forEach(lvl=>{
       let r = matrix[tag][lvl];
       let sum = r.mc + r.tf + r.sa + r.essay;
@@ -323,9 +354,9 @@ function admin(){
     <div class="c"><div class="tw"><table><tr><th>#</th><th>Chủ đề (Tag)</th><th>Dạng</th><th>Mức</th><th>Nội dung câu hỏi & Đáp án</th><th>Thao tác</th></tr>${D.bank.map((q,i)=>`<tr>
       <td>${q.no}</td>
       <td><input style="width:130px;padding:3px 6px" value="${esc(q.tag||'Chủ đề chung')}" placeholder="Tên chủ đề..." onchange="D.bank[${i}].tag=this.value;save()"></td>
-      <td>${TY[q.type]}</td>
+      <td><select onchange="D.bank[${i}].type=this.value;save()"><option value="mc" ${q.type==='mc'?'selected':''}>Nhiều lựa chọn</option><option value="tf" ${q.type==='tf'?'selected':''}>Đúng/Sai</option><option value="sa" ${q.type==='sa'?'selected':''}>Trả lời ngắn</option><option value="essay" ${q.type==='essay'?'selected':''}>Tự luận</option></select></td>
       <td><select onchange="D.bank[${i}].level=this.value;save()"><option value="NB" ${q.level==='NB'?'selected':''}>Nhận biết</option><option value="TH" ${q.level==='TH'?'selected':''}>Thông hiểu</option><option value="VD" ${q.level==='VD'?'selected':''}>Vận dụng</option><option value="VDC" ${q.level==='VDC'?'selected':''}>VD cao</option></select></td>
-      <td>${ER(String(q.stem).slice(0,180))}${q.opt && q.opt.A ? '<br><b>A:</b> '+ER(q.opt.A)+' | <b>B:</b> '+ER(q.opt.B)+' | <b>C:</b> '+ER(q.opt.C)+' | <b>D:</b> '+ER(q.opt.D) : ''}</td>
+      <td>${ER(String(q.stem).slice(0,160))}${q.type==='mc'&&q.opt&&q.opt.A ? '<br><b>A:</b> '+ER(q.opt.A)+' | <b>B:</b> '+ER(q.opt.B)+' | <b>C:</b> '+ER(q.opt.C)+' | <b>D:</b> '+ER(q.opt.D) : ''}</td>
       <td><button style="color:var(--er);border-color:var(--er);padding:2px 6px;font-size:0.8rem" onclick="D.bank.splice(${i},1);D.bank.forEach((item,idx)=>item.no=idx+1);save();show()">Xóa</button></td>
     </tr>`).join('')}</table></div></div>`;
     
@@ -358,7 +389,6 @@ function admin(){
   }
 }
 
-// Xử lý danh sách thí sinh
 function rows(){
   return String(D.roster||'').split('\n').map(l=>{
     const p=l.split(',').map(x=>x.trim());
@@ -366,7 +396,7 @@ function rows(){
   }).filter(r=>r.sbd);
 }
 
-// Đọc file Word (.docx) chuyên sâu: trích xuất hình ảnh đồ thị và tách chuẩn đáp án A, B, C, D
+// Đọc file Word (.docx) nhận diện thông minh 4 dạng: Nhiều lựa chọn, Đúng/Sai, Trả lời ngắn, Tự luận
 async function importFile(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -386,7 +416,6 @@ async function importFile(e){
       const zip = new JSZip();
       const zipContent = await zip.loadAsync(file);
       
-      // Trích xuất toàn bộ hình ảnh trong file docx (đồ thị, hình vẽ)
       D.imgs = {};
       const imageFiles = Object.keys(zipContent.files).filter(filename => filename.startsWith('word/media/'));
       for(let imgPath of imageFiles){
@@ -404,49 +433,20 @@ async function importFile(e){
       
       let structuredLines = [];
       for(let p of paragraphs){
-        let lineText = "";
-        // Duyệt qua các thành phần trong đoạn văn để giữ vị trí hình ảnh
-        let runs = p.childNodes;
-        for(let r of runs){
-          if(r.nodeName === 'w:r'){
-            let ts = r.getElementsByTagName("w:t");
-            for(let t of ts) lineText += t.textContent;
-            
-            let imgs = r.getElementsByTagName("a:blip");
-            for(let im of imgs){
-              let embedId = im.getAttribute("r:embed");
-              // Tìm target của r:embed từ file rels nếu cần, hoặc duyệt trực tiếp media
-              // Ở đây ta đơn giản hóa bằng cách chèn đánh dấu ảnh theo thứ tự xuất hiện
-            }
-          }
-        }
-        
-        // Kiểm tra xem đoạn văn có chứa thẻ hình ảnh drawing không
-        let drawings = p.getElementsByTagName("w:drawing");
-        if(drawingElements = p.getElementsByTagName("a:blip")){
-          for(let blip of drawingElements){
-            let rEmbed = blip.getAttribute("r:embed");
-            // Lấy rels mapping
-            // Thay vì phức tạp hóa, ta gom các file media theo thứ tự
-          }
-        }
-
-        // Cách tối ưu: quét toàn bộ thẻ r:embed và chèn tag hình ảnh vào dòng
         let rElements = p.getElementsByTagName("w:r");
         let paraFormatted = "";
+        let imgCounter = 0;
         for(let re of rElements){
           let ts = re.getElementsByTagName("w:t");
           for(let t of ts) paraFormatted += t.textContent;
           
           let blips = re.getElementsByTagName("a:blip");
           if(blips.length > 0){
-            // Lấy tên file ảnh tương ứng từ quan hệ hoặc danh sách media đã có
-            // Tạm thời gán mã ảnh theo danh sách media có sẵn
             let imgKeys = Object.keys(D.imgs);
             if(imgKeys.length > 0){
-              // Lấy ảnh theo thứ tự hoặc match r:embed
-              let assignedId = imgKeys[structuredLines.length % imgKeys.length];
+              let assignedId = imgKeys[imgCounter % imgKeys.length];
               paraFormatted += ` ⟪IMG:${assignedId}⟫ `;
+              imgCounter++;
             }
           }
         }
@@ -466,30 +466,55 @@ function parseTextToBank(txt){
   let currentTag = 'CHỦ ĐỀ CHUNG';
 
   rawLines.forEach(l=>{
-    // 1. Nhận diện dòng chuyển Chủ đề
     if(/^CHỦ\s*ĐỀ\s*[:\–\-]/i.test(l) || /^TAG\s*[:\–\-]/i.test(l)){
       let extracted = l.replace(/^CHỦ\s*ĐỀ\s*[:\–\-]/i, '').replace(/^TAG\s*[:\–\-]/i, '').trim();
       if(extracted) currentTag = extracted;
       return;
     }
 
-    // 2. Bắt đầu câu hỏi mới
     if(/^CÂU\s*\d+/i.test(l) || /^Q\s*\d+/i.test(l) || /^\d+\./.test(l)){
       if(cur) bank.push(cur);
 
       let stemText = l.replace(/^(?:CÂU\s*\d+|Q\s*\d+|\d+)\s*[\.\:]\s*/i, '').trim();
       
-      // Bóc tách mức độ NB, TH, VD, VDC
       let levelMatch = stemText.match(/\[(NB|TH|VD|VDC)\]/i);
       let levelVal = levelMatch ? levelMatch[1].toUpperCase() : 'NB';
       stemText = stemText.replace(/\[(NB|TH|VD|VDC)\]/i, '').trim();
 
-      cur = {type:'mc', level:levelVal, tag:currentTag, stem:stemText, opt:{A:'',B:'',C:'',D:''}, ans:['A'], sol:''};
+      // Nhận diện tự động dạng câu hỏi nếu có chữ [Đúng/Sai], [Trả lời ngắn], [Tự luận] hoặc mặc định Nhiều lựa chọn
+      let typeVal = 'mc';
+      if(/đúng[\/\s]sai/i.test(stemText) || /phần\s*ii/i.test(stemText)){
+        typeVal = 'tf';
+      } else if(/trả\s*lời\s*ngắn/i.test(stemText) || /phần\s*iii/i.test(stemText)){
+        typeVal = 'sa';
+      } else if(/tự\s*luận/i.test(stemText) || /phần\s*iv/i.test(stemText)){
+        typeVal = 'essay';
+      }
+      stemText = stemText.replace(/\[(Đúng[\/\s]Sai|Trả lời ngắn|Tự luận)\]/gi, '').trim();
+
+      cur = {
+        type: typeVal, 
+        level: levelVal, 
+        tag: currentTag, 
+        stem: stemText, 
+        opt: {A:'',B:'',C:'',D:''}, 
+        st: [{k:'a',t:'',lv:'NB',ok:true},{k:'b',t:'',lv:'TH',ok:true},{k:'c',t:'',lv:'VD',ok:true},{k:'d',t:'',lv:'VDC',ok:true}],
+        ans: typeVal==='sa'?['']:['A'], 
+        sol:''
+      };
       return;
     }
 
-    // 3. Đọc các lựa chọn A, B, C, D (hỗ trợ cả trường hợp nằm chung trên 1 dòng hoặc tách dòng)
     if(cur){
+      // Nhận diện ý a, b, c, d cho dạng Đúng/Sai
+      if(cur.type === 'tf' && /^[a-d]\./i.test(l)){
+        let idx = {'a':0,'b':1,'c':2,'d':3}[l[0].toLowerCase()];
+        if(idx !== undefined && cur.st[idx]){
+          cur.st[idx].t = l.slice(2).trim();
+        }
+        return;
+      }
+
       let optMatch = l.match(/([A-D])\.\s*([^A-D\.]+(?=\s+[B-D]\.|$))/g);
       if(optMatch && optMatch.length >= 2){
         optMatch.forEach(o=>{
@@ -506,13 +531,11 @@ function parseTextToBank(txt){
         return;
       }
 
-      // 4. Đọc lời giải [HDG]
       if(/^\[HDG\]/i.test(l) || /^HDG:/i.test(l)){
         cur.sol = l;
         return;
       }
 
-      // 5. Cộng dồn vào đề bài hoặc lời giải
       if(cur.sol){
         cur.sol += '\n' + l;
       } else {
@@ -526,13 +549,12 @@ function parseTextToBank(txt){
   if(bank.length > 0){
     D.bank = bank.map((q,i)=>({...q, no:i+1}));
     save(); show();
-    alert(`Đã nhập thành công ${bank.length} câu hỏi kèm hình ảnh và đáp án chuẩn từ file Word!`);
+    alert(`Đã phân tách thành công ${bank.length} câu hỏi theo đúng các dạng (Trắc nghiệm, Đúng/Sai, Trả lời ngắn, Tự luận)!`);
   } else {
     alert('Không tìm thấy cấu trúc câu hỏi phù hợp trong file Word.');
   }
 }
 
-// Sinh mã đề
 function gen(){
   const n = parseInt($('#nc').value) || 4;
   const targetCount = D.bank.length > 0 ? D.bank.length : 22;
@@ -552,7 +574,6 @@ function gen(){
   alert(`Đã sinh thành công ${n} mã đề, mỗi mã đề có đúng ${targetCount} câu hỏi chuẩn theo cấu trúc!`);
 }
 
-// Form Đăng nhập Thí sinh
 function login(){
   $('#app').innerHTML=`
     <div class="c" style="max-width:440px;margin:30px auto">
@@ -571,9 +592,9 @@ function exam(){
     b = (q.ov||Object.keys(q.opt||{}).map(k=>q.opt[k])).map((o,k)=>`<button class="o ${a===k?'on':''}" onclick="ans(${k})"><b>${'ABCD'[k]}.</b> ${ER(o)}</button>`).join('');
   }
   if(q.type==='tf') {
-    b = (q.sv||[]).map((o,k)=>`
+    b = (q.st||[]).map((o,k)=>`
       <div class="tr">
-        <span><b>${'abcd'[k]})</b> ${ER(o)}</span>
+        <span><b>${'abcd'[k]})</b> ${ER(o.t)}</span>
         <button class="${a && a[k]===true?'on':''}" onclick="tf(${k},true)">Đúng</button>
         <button class="${a && a[k]===false?'on':''}" onclick="tf(${k},false)">Sai</button>
       </div>`).join('');
