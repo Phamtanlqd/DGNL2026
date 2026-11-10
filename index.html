@@ -224,34 +224,38 @@ function show(){
 }
 
 function admin(){
-  if(!adminAuthed && sessionStorage.getItem('ak')){
-    adminAuthed=true;
-  }
-  if(!adminAuthed){
-    $('#app').innerHTML=`
-      <div class="c" style="max-width:420px;margin:30px auto">
-        <h2>Đăng nhập Quản trị viên (${currentSub})</h2>
-        <label class="sm">Mật khẩu Quản trị<br><input id="adPass" type="password" style="width:100%" placeholder="Nhập mật khẩu..."></label>
-        <p style="margin-top:14px"><button class="p" onclick="adminLogin()">Đăng nhập Quản trị</button></p>
-      </div>`;
-    return;
-  }
-  const tabs=[['bank','1. Ngân hàng đề'],['cd','2. Mã đề & Đăng mạng'],['gs','3. Giám sát & Kết quả'],['gc','4. Phân quyền & Chấm tự luận']];
-  let h=`<div class="c" style="display:flex;gap:6px;flex-wrap:wrap"><div class="sub-bar"><b>Môn quản lý:</b> <span style="color:var(--pr);font-weight:bold">${currentSub}</span></div>${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="go2('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
-  
-  if(tab==='bank')h+=`<div class="c"><h2>Nhập đề gốc môn ${currentSub}</h2><input type="file" accept=".docx,.json" onchange="importFile(event)"><p class="sm mu">Đọc file Word (.docx) chứa câu hỏi.</p></div>
-  <div class="c"><h2>Ngân hàng: ${D.bank.length} câu</h2><div class="tw"><table><tr><th>#</th><th>Dạng</th><th>Mức</th><th>Nội dung</th></tr>${D.bank.map((q,i)=>`<tr><td>${q.no}</td><td>${TY[q.type]}</td><td>${LV[q.level]||'—'}</td><td>${esc(String(q.stem).slice(0,100))}</td></tr>`).join('')}</table></div></div>`;
-  
-  if(tab==='cd'){const c=D.cfg;h+=`<div class="c"><h2>Sinh mã đề môn ${currentSub}</h2><div class="g"><label class="sm">Tên kỳ thi<br><input id="cn" value="${esc(c.name)}" onchange="D.cfg.name=this.value;save()"></label><label class="sm">Thời gian (phút)<br><input id="ct" type="number" value="${c.min}" onchange="D.cfg.min=+this.value;save()"></label><label class="sm">Số mã đề<br><input id="nc" type="number" min="1" max="50" value="${c.n}"></label></div><p><button class="p" onclick="gen()">Sinh mã đề</button></p>
-  ${c.codes.length?`<p>Đã sinh: ${c.codes.map(x=>`<span class="bd">Mã ${x.code}</span>`).join(' ')}</p><button class="p" onclick="pub()">Đăng đề + danh sách môn ${currentSub} lên máy chủ</button>`:'<p class="mu">Chưa có mã đề.</p></div>';}
-  
-  if(tab==='gs'){const R=rows(),sb=R.map(r=>D.subs?.[r.sbd]),dt=sb.filter(Boolean);
-  h+=`<div class="c"><h2>Danh sách thí sinh môn ${currentSub}</h2><textarea id="ro" onchange="D.roster=this.value;save();show()" placeholder="MaHS,HoTen,Lop,MaDe,Matkhau">${esc(D.roster)}</textarea><p><button onclick="refresh()">Làm mới dữ liệu từ Server</button></p></div>
-  <div class="c"><div class="tw"><table><tr><th>Mã HS</th><th>Họ tên</th><th>Lớp</th><th>Mã đề</th><th>Điểm</th><th>Trạng thái</th></tr>${R.map(r=>{const s=D.subs?.[r.sbd],g=s&&s.done?(s.g||{p:0}):null;return `<tr><td>${esc(r.sbd)}</td><td>${esc(r.ten)}</td><td>${esc(r.lop)}</td><td>${r.made||(s?s.code:'')}</td><td>${g?g.p.toFixed(2):''}</td><td>${s?(s.done?'Đã nộp':'Đang thi'):'Vắng'}</td></tr>`}).join('')}</table></div></div>`;}
-  
-  if(tab==='gc') h+=gcTab();
+  try{
+    if(!adminAuthed && sessionStorage.getItem('ak')){
+      adminAuthed=true;
+    }
+    if(!adminAuthed){
+      $('#app').innerHTML=`
+        <div class="c" style="max-width:420px;margin:30px auto">
+          <h2>Đăng nhập Quản trị viên (${currentSub})</h2>
+          <label class="sm">Mật khẩu Quản trị<br><input id="adPass" type="password" style="width:100%" placeholder="Nhập mật khẩu..."></label>
+          <p style="margin-top:14px"><button class="p" onclick="adminLogin()">Đăng nhập Quản trị</button></p>
+        </div>`;
+      return;
+    }
+    const tabs=[['bank','1. Ngân hàng đề'],['cd','2. Mã đề & Đăng mạng'],['gs','3. Giám sát & Kết quả'],['gc','4. Phân quyền & Chấm tự luận']];
+    let h=`<div class="c" style="display:flex;gap:6px;flex-wrap:wrap"><div class="sub-bar"><b>Môn quản lý:</b> <span style="color:var(--pr);font-weight:bold">${currentSub}</span></div>${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="go2('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
+    
+    if(tab==='bank')h+=`<div class="c"><h2>Nhập đề gốc môn ${currentSub}</h2><input type="file" accept=".docx,.json" onchange="importFile(event)"><p class="sm mu">Đọc file Word (.docx) chứa câu hỏi.</p></div>
+    <div class="c"><h2>Ngân hàng: ${D.bank.length} câu</h2><div class="tw"><table><tr><th>#</th><th>Dạng</th><th>Mức</th><th>Nội dung</th></tr>${D.bank.map((q,i)=>`<tr><td>${q.no}</td><td>${TY[q.type]}</td><td>${LV[q.level]||'—'}</td><td>${esc(String(q.stem).slice(0,100))}</td></tr>`).join('')}</table></div></div>`;
+    
+    if(tab==='cd'){const c=D.cfg;h+=`<div class="c"><h2>Sinh mã đề môn ${currentSub}</h2><div class="g"><label class="sm">Tên kỳ thi<br><input id="cn" value="${esc(c.name)}" onchange="D.cfg.name=this.value;save()"></label><label class="sm">Thời gian (phút)<br><input id="ct" type="number" value="${c.min}" onchange="D.cfg.min=+this.value;save()"></label><label class="sm">Số mã đề<br><input id="nc" type="number" min="1" max="50" value="${c.n}"></label></div><p><button class="p" onclick="gen()">Sinh mã đề</button></p>
+    ${c.codes.length?`<p>Đã sinh: ${c.codes.map(x=>`<span class="bd">Mã ${x.code}</span>`).join(' ')}</p><button class="p" onclick="pub()">Đăng đề + danh sách môn ${currentSub} lên máy chủ</button>`:'<p class="mu">Chưa có mã đề.</p></div>';}
+    
+    if(tab==='gs'){const R=rows(),sb=R.map(r=>D.subs?.[r.sbd]),dt=sb.filter(Boolean);
+    h+=`<div class="c"><h2>Danh sách thí sinh môn ${currentSub}</h2><textarea id="ro" onchange="D.roster=this.value;save();show()" placeholder="MaHS,HoTen,Lop,MaDe,Matkhau">${esc(D.roster)}</textarea><p><button onclick="refresh()">Làm mới dữ liệu từ Server</button></p></div>
+    <div class="c"><div class="tw"><table><tr><th>Mã HS</th><th>Họ tên</th><th>Lớp</th><th>Mã đề</th><th>Điểm</th><th>Trạng thái</th></tr>${R.map(r=>{const s=D.subs?.[r.sbd],g=s&&s.done?(s.g||{p:0}):null;return `<tr><td>${esc(r.sbd)}</td><td>${esc(r.ten)}</td><td>${esc(r.lop)}</td><td>${r.made||(s?s.code:'')}</td><td>${g?g.p.toFixed(2):''}</td><td>${s?(s.done?'Đã nộp':'Đang thi'):'Vắng'}</td></tr>`}).join('')}</table></div></div>`;}
+    
+    if(tab==='gc') h+=gcTab();
 
-  $('#app').innerHTML=h;
+    $('#app').innerHTML=h;
+  }catch(err){
+    $('#app').innerHTML=`<div class="c" style="color:var(--er)"><h2>Lỗi giao diện Quản trị</h2><p>${esc(err.message)}</p><button onclick="localStorage.clear();location.reload()">Đặt lại bộ nhớ trình duyệt</button></div>`;
+  }
 }
 
 // Xử lý danh sách thí sinh từ định dạng MaHS,HoTen,Lop,MaDe,Matkhau
@@ -260,6 +264,79 @@ function rows(){
     const p=l.split(',').map(x=>x.trim());
     return {sbd:p[0],ten:p[1],lop:p[2],made:p[3],pass:p[4]};
   }).filter(r=>r.sbd);
+}
+
+// Hàm bổ sung xử lý đọc file Word (.docx) đề gốc tránh lỗi trắng trang
+async function importFile(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.name.endsWith('.json')){
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const d = JSON.parse(ev.target.result);
+        if(d.bank){ D.bank = d.bank; if(d.cfg) D.cfg = Object.assign(D.cfg, d.cfg); save(); show(); alert('Nhập dữ liệu thành công!'); }
+      } catch(err){ alert('File JSON không hợp lệ.'); }
+    };
+    reader.readAsText(file);
+    return;
+  }
+  if(file.name.endsWith('.docx')){
+    try {
+      const zip = new JSZip();
+      const zipContent = await zip.loadAsync(file);
+      const xmlDoc = await zipContent.file("word/document.xml").async("string");
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(xmlDoc, "text/xml");
+      const paragraphs = xml.getElementsByTagName("w:p");
+      let textLines = [];
+      for(let p of paragraphs){
+        let texts = p.getElementsByTagName("w:t");
+        let line = "";
+        for(let t of texts) line += t.textContent;
+        textLines.push(line);
+      }
+      parseTextToBank(textLines.join('\n'));
+    } catch(err){
+      alert('Không thể đọc file Word này.');
+    }
+  }
+}
+
+function parseTextToBank(txt){
+  const lines = txt.split('\n').map(l=>l.trim()).filter(Boolean);
+  let bank = [], cur = null;
+  lines.forEach(l=>{
+    if(/^CÂU\s*\d+/i.test(l) || /^Q\s*\d+/i.test(l) || /^\d+\./.test(l)){
+      if(cur) bank.push(cur);
+      cur = {type:'mc', level:'NB', tag:'Chung', stem:l.replace(/^\d+\.\s*/,''), opt:{A:'',B:'',C:'',D:''}, ans:['A'], sol:''};
+    } else if(cur && /^[A-D]\./i.test(l)){
+      let k = l[0].toUpperCase();
+      cur.opt[k] = l.slice(2).trim();
+    } else if(cur){
+      cur.stem += '\n' + l;
+    }
+  });
+  if(cur) bank.push(cur);
+  if(bank.length > 0){
+    D.bank = bank.map((q,i)=>({...q, no:i+1}));
+    save(); show();
+    alert(`Đã nhập thành công ${bank.length} câu hỏi vào ngân hàng!`);
+  } else {
+    alert('Không tìm thấy cấu trúc câu hỏi phù hợp trong file.');
+  }
+}
+
+// Hàm giả lập sinh mã đề đơn giản cho admin
+function gen(){
+  const n = parseInt($('#nc').value)||4;
+  let codes = [];
+  for(let i=1; i<=n; i++){
+    let codeNum = 100 + i;
+    codes.push({code: codeNum, qs: D.bank.slice(0, 10)});
+  }
+  D.cfg.codes = codes;
+  save(); show();
 }
 
 // Form Đăng nhập Thí sinh
@@ -278,7 +355,7 @@ function exam(){
   let b='';
 
   if(q.type==='mc') {
-    b = q.ov.map((o,k)=>`<button class="o ${a===k?'on':''}" onclick="ans(${k})"><b>${'ABCD'[k]}.</b> ${ER(o)}</button>`).join('');
+    b = (q.ov||Object.keys(q.opt||{}).map(k=>q.opt[k])).map((o,k)=>`<button class="o ${a===k?'on':''}" onclick="ans(${k})"><b>${'ABCD'[k]}.</b> ${ER(o)}</button>`).join('');
   }
   if(q.type==='tf') {
     b = (q.sv||[]).map((o,k)=>`
