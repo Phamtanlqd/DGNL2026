@@ -396,7 +396,6 @@ function rows(){
   }).filter(r=>r.sbd);
 }
 
-// Đọc file Word (.docx) nhận diện thông minh 4 dạng: Nhiều lựa chọn, Đúng/Sai, Trả lời ngắn, Tự luận
 async function importFile(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -464,8 +463,14 @@ function parseTextToBank(txt){
   const rawLines = txt.split('\n').map(l=>l.trim()).filter(Boolean);
   let bank = [], cur = null;
   let currentTag = 'CHỦ ĐỀ CHUNG';
+  let defaultType = 'mc';
 
   rawLines.forEach(l=>{
+    if(/phần\s*i/i.test(l) || /dạng\s*trắc\s*nghiệm/i.test(l)){ defaultType = 'mc'; return; }
+    if(/phần\s*ii/i.test(l) || /đúng\s*sai/i.test(l)){ defaultType = 'tf'; return; }
+    if(/phần\s*iii/i.test(l) || /trả\s*lời\s*ngắn/i.test(l)){ defaultType = 'sa'; return; }
+    if(/phần\s*iv/i.test(l) || /tự\s*luận/i.test(l)){ defaultType = 'essay'; return; }
+
     if(/^CHỦ\s*ĐỀ\s*[:\–\-]/i.test(l) || /^TAG\s*[:\–\-]/i.test(l)){
       let extracted = l.replace(/^CHỦ\s*ĐỀ\s*[:\–\-]/i, '').replace(/^TAG\s*[:\–\-]/i, '').trim();
       if(extracted) currentTag = extracted;
@@ -481,16 +486,12 @@ function parseTextToBank(txt){
       let levelVal = levelMatch ? levelMatch[1].toUpperCase() : 'NB';
       stemText = stemText.replace(/\[(NB|TH|VD|VDC)\]/i, '').trim();
 
-      // Nhận diện tự động dạng câu hỏi nếu có chữ [Đúng/Sai], [Trả lời ngắn], [Tự luận] hoặc mặc định Nhiều lựa chọn
-      let typeVal = 'mc';
-      if(/đúng[\/\s]sai/i.test(stemText) || /phần\s*ii/i.test(stemText)){
-        typeVal = 'tf';
-      } else if(/trả\s*lời\s*ngắn/i.test(stemText) || /phần\s*iii/i.test(stemText)){
-        typeVal = 'sa';
-      } else if(/tự\s*luận/i.test(stemText) || /phần\s*iv/i.test(stemText)){
-        typeVal = 'essay';
-      }
-      stemText = stemText.replace(/\[(Đúng[\/\s]Sai|Trả lời ngắn|Tự luận)\]/gi, '').trim();
+      let typeVal = defaultType;
+      if(/\[(?:ĐS|Đúng[\/\s]Sai)\]/i.test(stemText) || /\[TF\]/i.test(stemText)){ typeVal = 'tf'; }
+      else if(/\[(?:TLN|Trả lời ngắn)\]/i.test(stemText)){ typeVal = 'sa'; }
+      else if(/\[(?:TL|Tự luận)\]/i.test(stemText)){ typeVal = 'essay'; }
+      
+      stemText = stemText.replace(/\[(ĐS|Đúng[\/\s]Sai|TF|TLN|Trả lời ngắn|TL|Tự luận)\]/gi, '').trim();
 
       cur = {
         type: typeVal, 
@@ -506,11 +507,12 @@ function parseTextToBank(txt){
     }
 
     if(cur){
-      // Nhận diện ý a, b, c, d cho dạng Đúng/Sai
-      if(cur.type === 'tf' && /^[a-d]\./i.test(l)){
+      // Tách chuẩn ý a, b, c, d cho câu Đúng/Sai kể cả khi dính nhãn [NB]
+      if(cur.type === 'tf' && (/^[a-d][\.\)]/i.test(l) || /^[a-d]\s*\[/i.test(l))){
+        let cleanL = l.replace(/^[a-d][\.\)]\s*/i, '');
         let idx = {'a':0,'b':1,'c':2,'d':3}[l[0].toLowerCase()];
         if(idx !== undefined && cur.st[idx]){
-          cur.st[idx].t = l.slice(2).trim();
+          cur.st[idx].t = cleanL.replace(/\[(NB|TH|VD|VDC)\]/gi, '').trim();
         }
         return;
       }
@@ -549,7 +551,7 @@ function parseTextToBank(txt){
   if(bank.length > 0){
     D.bank = bank.map((q,i)=>({...q, no:i+1}));
     save(); show();
-    alert(`Đã phân tách thành công ${bank.length} câu hỏi theo đúng các dạng (Trắc nghiệm, Đúng/Sai, Trả lời ngắn, Tự luận)!`);
+    alert(`Đã nhập thành công ${bank.length} câu hỏi vào ngân hàng đề!`);
   } else {
     alert('Không tìm thấy cấu trúc câu hỏi phù hợp trong file Word.');
   }
@@ -589,7 +591,7 @@ function exam(){
   let b='';
 
   if(q.type==='mc') {
-    b = (q.ov||Object.keys(q.opt||{}).map(k=>q.opt[k])).map((o,k)=>`<button class="o ${a===k?'on':''}" onclick="ans(${k})"><b>${'ABCD'[k]}.</b> ${ER(o)}</button>`).join('');
+    b = ['A','B','C','D'].map(k=>q.opt[k] ? `<button class="o ${a===k?'on':''}" onclick="ans('${k}')"><b>${k}.</b> ${ER(q.opt[k])}</button>` : '').join('');
   }
   if(q.type==='tf') {
     b = (q.st||[]).map((o,k)=>`
