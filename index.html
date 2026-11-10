@@ -42,6 +42,8 @@ pre{white-space:pre-wrap;margin:0;font:inherit}
       <option value="Ly">Vật lý</option>
       <option value="Hoa">Hóa học</option>
       <option value="Sinh">Sinh học</option>
+      <option value="Tin">Tin học</option>
+       <option value="CN">Công nghệ</option>
     </select>
   </span>
   <button id="r1" onclick="role('ad')">Quản trị</button>
@@ -243,8 +245,18 @@ function admin(){
     if(tab==='bank')h+=`<div class="c"><h2>Nhập đề gốc môn ${currentSub}</h2><input type="file" accept=".docx,.json" onchange="importFile(event)"><p class="sm mu">Đọc file Word (.docx) chứa câu hỏi.</p></div>
     <div class="c"><h2>Ngân hàng: ${D.bank.length} câu</h2><div class="tw"><table><tr><th>#</th><th>Dạng</th><th>Mức</th><th>Nội dung</th></tr>${D.bank.map((q,i)=>`<tr><td>${q.no}</td><td>${TY[q.type]}</td><td>${LV[q.level]||'—'}</td><td>${esc(String(q.stem).slice(0,100))}</td></tr>`).join('')}</table></div></div>`;
     
-    if(tab==='cd'){const c=D.cfg;h+=`<div class="c"><h2>Sinh mã đề môn ${currentSub}</h2><div class="g"><label class="sm">Tên kỳ thi<br><input id="cn" value="${esc(c.name)}" onchange="D.cfg.name=this.value;save()"></label><label class="sm">Thời gian (phút)<br><input id="ct" type="number" value="${c.min}" onchange="D.cfg.min=+this.value;save()"></label><label class="sm">Số mã đề<br><input id="nc" type="number" min="1" max="50" value="${c.n}"></label></div><p><button class="p" onclick="gen()">Sinh mã đề</button></p>
-    ${c.codes.length?`<p>Đã sinh: ${c.codes.map(x=>`<span class="bd">Mã ${x.code}</span>`).join(' ')}</p><button class="p" onclick="pub()">Đăng đề + danh sách môn ${currentSub} lên máy chủ</button>`:'<p class="mu">Chưa có mã đề.</p></div>';}
+    if(tab==='cd'){
+      const c=D.cfg;
+      h+=`<div class="c"><h2>Sinh mã đề môn ${currentSub}</h2>
+      <div class="g">
+        <label class="sm">Tên kỳ thi<br><input id="cn" value="${esc(c.name)}" onchange="D.cfg.name=this.value;save()"></label>
+        <label class="sm">Thời gian (phút)<br><input id="ct" type="number" value="${c.min}" onchange="D.cfg.min=+this.value;save()"></label>
+        <label class="sm">Số mã đề<br><input id="nc" type="number" min="1" max="50" value="${c.n}"></label>
+      </div>
+      <p><button class="p" onclick="gen()">Sinh mã đề</button></p>
+      ${c.codes.length ? `<p>Đã sinh: ${c.codes.map(x=>`<span class="bd">Mã ${x.code}</span>`).join(' ')}</p><button class="p" onclick="pub()">Đăng đề + danh sách môn ${currentSub} lên máy chủ</button>` : `<p class="mu">Chưa có mã đề.</p>`}
+      </div>`;
+    }
     
     if(tab==='gs'){const R=rows(),sb=R.map(r=>D.subs?.[r.sbd]),dt=sb.filter(Boolean);
     h+=`<div class="c"><h2>Danh sách thí sinh môn ${currentSub}</h2><textarea id="ro" onchange="D.roster=this.value;save();show()" placeholder="MaHS,HoTen,Lop,MaDe,Matkhau">${esc(D.roster)}</textarea><p><button onclick="refresh()">Làm mới dữ liệu từ Server</button></p></div>
