@@ -512,9 +512,8 @@ function parseTextToBank(txt){
     }
 
     if(cur){
-      // Nhận diện dòng ý a, b, c, d của câu Đúng/Sai cực chuẩn
-      if(/^[a-d]\s*[\.\)]/i.test(l) || /^[a-d]\s*\[/i.test(l)){
-        cur.type = 'tf'; // Tự động ép về đúng dạng Đúng/Sai nếu xuất hiện ý a, b, c, d
+      // Chỉ nhận diện ý a, b, c, d nếu câu hiện tại đích thực là dạng Đúng/Sai (tf)
+      if(cur.type === 'tf' && (/^[a-d]\s*[\.\)]/i.test(l) || /^[a-d]\s*\[/i.test(l))){
         let idxChar = l[0].toLowerCase();
         let idx = {'a':0,'b':1,'c':2,'d':3}[idxChar];
         let cleanL = l.replace(/^[a-d]\s*[\.\)]\s*/i, '').trim();
@@ -529,7 +528,7 @@ function parseTextToBank(txt){
         return;
       }
 
-      // Nhận diện đáp án A, B, C, D của câu trắc nghiệm
+      // Nhận diện đáp án A, B, C, D chính xác cho câu trắc nghiệm
       let optMatch = l.match(/^([A-D])[\.\)]\s*(.*)/);
       if(optMatch){
         let k = optMatch[1].toUpperCase();
