@@ -241,28 +241,58 @@ async function syncSheetReport(){
   }
 }
 
-// Hàm xuất ngược Ma trận đặc tả từ ngân hàng câu hỏi hiện có
+// Hàm xuất ma trận đặc tả chuẩn sư phạm có dòng tổng cộng
 function exportMatrix(){
   if(!D.bank || D.bank.length === 0){ alert('Ngân hàng đề trống!'); return; }
   let matrix = {};
+  let totals = {mc:0, tf:0, sa:0, essay:0, all:0};
+  
   D.bank.forEach(q=>{
-    let tag = q.tag || 'Chung';
+    let tag = q.tag && q.tag !== 'Chung' ? q.tag : 'Chủ đề chung';
     let lvl = q.level || 'NB';
     let type = q.type || 'mc';
     if(!matrix[tag]) matrix[tag] = {NB:{mc:0,tf:0,sa:0,essay:0},TH:{mc:0,tf:0,sa:0,essay:0},VD:{mc:0,tf:0,sa:0,essay:0},VDC:{mc:0,tf:0,sa:0,essay:0}};
     if(matrix[tag][lvl] && matrix[tag][lvl][type] !== undefined) matrix[tag][lvl][type]++;
+    
+    totals[type]++;
+    totals.all++;
   });
 
-  let html = `<div class="tw"><table><tr><th>Chủ đề / Nội dung</th><th>Mức độ</th><th>Nhiều lựa chọn</th><th>Đúng / Sai</th><th>Trả lời ngắn</th><th>Tự luận</th><th>Tổng</th></tr>`;
-  Object.keys(matrix).forEach(tag=>{
+  let html = `<div class="tw"><table>
+    <tr><th rowspan="2">STT</th><th rowspan="2">Chủ đề / Nội dung</th><th rowspan="2">Mức độ đánh giá</th><th colspan="4">Số câu hỏi theo dạng thức</th><th rowspan="2">Tổng số câu</th></tr>
+    <tr><th>Nhiều lựa chọn</th><th>Đúng / Sai</th><th>Trả lời ngắn</th><th>Tự luận</th></tr>`;
+  
+  let stt = 1;
+  let tags = Object.keys(matrix);
+  
+  tags.forEach(tag=>{
     ['NB','TH','VD','VDC'].forEach(lvl=>{
       let r = matrix[tag][lvl];
       let sum = r.mc + r.tf + r.sa + r.essay;
       if(sum > 0){
-        html += `<tr><td><b>${tag}</b></td><td>${LV[lvl]}</td><td>${r.mc||''}</td><td>${r.tf||''}</td><td>${r.sa||''}</td><td>${r.essay||''}</td><td><b>${sum}</b></td></tr>`;
+        html += `<tr>
+          <td>${stt++}</td>
+          <td><b>${tag}</b></td>
+          <td>${LV[lvl]}</td>
+          <td style="text-align:center">${r.mc || ''}</td>
+          <td style="text-align:center">${r.tf || ''}</td>
+          <td style="text-align:center">${r.sa || ''}</td>
+          <td style="text-align:center">${r.essay || ''}</td>
+          <td style="text-align:center"><b>${sum}</b></td>
+        </tr>`;
       }
     });
   });
+
+  html += `<tr style="background:var(--ps);font-weight:bold">
+    <td colspan="3" style="text-align:right">TỔNG CỘNG:</td>
+    <td style="text-align:center">${totals.mc}</td>
+    <td style="text-align:center">${totals.tf}</td>
+    <td style="text-align:center">${totals.sa}</td>
+    <td style="text-align:center">${totals.essay}</td>
+    <td style="text-align:center;color:var(--pr)">${totals.all}</td>
+  </tr>`;
+
   html += `</table></div>`;
   $('#matrixBox').innerHTML = html;
 }
