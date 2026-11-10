@@ -63,7 +63,7 @@ const SAMPLE=[
 {type:'sa',level:'VD',tag:'Đại số',stem:'Tích các nghiệm của $x^2-7x+10=0$ là',ans:['10'],sol:'Viète.'},
 {type:'essay',level:'VD',tag:'Xác suất',stem:'Trình bày suy luận giải bài toán xác suất toàn phần...',sol:'Rubric: lập sơ đồ 0,5; công thức 1,0; kết quả 0,5.'}
 ];
-const ROSTER='10001,Nguyễn Văn An,12A1,101,123456\n10002,Trần Thị Bình,12A1,102,123456\n10003,Lê Minh Châu,12A2,103,123456';
+const ROSTER='10001,Nguyễn Văn An,12A1,0101,123456\n10002,Trần Thị Bình,12A1,0102,123456\n10003,Lê Minh Châu,12A2,0103,123456';
 
 let currentSub = 'Toan';
 let D = loadSub(currentSub);
@@ -119,7 +119,13 @@ async function pub(){
   alert(r.ok?`Đăng thành công môn ${currentSub} (${r.n} mã đề, ${r.hs} thí sinh)!`:r.err);
 }
 
-async function refresh(){const r=await api('stats',{key:AK()});if(!r.ok){alert(r.err);return}D.subs=r.subs;show()}
+async function refresh(){
+  const r=await api('stats',{key:AK()});
+  if(!r.ok){alert(r.err);return}
+  D.subs=r.subs;
+  if(r.gr) D.gr = r.gr;
+  show();
+}
 function go2(t){tab=t;if(t==='gs'&&API_URL)refresh();else if(t==='gc')gcLoad();else show()}
 
 let _t;
@@ -139,8 +145,6 @@ async function enter(){
 const cls=t=>String(t||'').split(/[,;]/).map(x=>x.trim()).filter(Boolean);
 function fin3(a,b,c,t){if(c!=null)return{f:c,st:'Vòng 3'};if(a==null||b==null)return{f:null,st:'Chờ chấm'};return Math.abs(a-b)>t?{f:null,st:'Lệch > '+t}:{f:(a+b)/2,st:'Đạt'}}
 const gsc=(sbd,no,rd)=>{const x=D.grades[sbd+'|'+no+'|'+rd];return x?x.score:null};
-function essOf(s){const cd=D.cfg.codes.find(c=>c.code==s.code);return cd?cd.qs.map((q,i)=>({q,i})).filter(x=>x.q.type==='essay'):[]}
-
 const rpcG=async(a,p)=>api(a,p);
 
 async function gcLoad(){
@@ -154,7 +158,10 @@ async function gcLoad(){
 }
 
 async function setV3(sbd,no,v){const r=await rpcG('g_final',{key:AK(),sbd,no,score:+v});if(!r.ok)alert(r.err);gcLoad()}
-async function gcfgSave(){const r=await api('g_cfg',{key:AK(),gcfg:{emax:D.cfg.emax,thr:D.cfg.thr,gr:D.gr}});alert(r.ok?'Lưu cấu hình chấm thành công.':r.err)}
+async function gcfgSave(){
+  const r=await api('g_cfg',{key:AK(),gcfg:{emax:D.cfg.emax,thr:D.cfg.thr,gr:D.gr}});
+  alert(r.ok?'Lưu cấu hình chấm thành công.':r.err);
+}
 
 function gcTab(){
  const c=D.cfg,n3=OV.filter(o=>/^Lệch/.test(o.st)).length,v=OV.filter(o=>ONL?/^Lệch|^Vòng 3/.test(o.st):true);
@@ -225,6 +232,41 @@ function show(){
   mode==='ad'?admin():mode==='gv'?gvView():(S&&!S.done?exam():login());
 }
 
+async function syncSheetReport(){
+  const r = await api('sync_results', {key: AK()});
+  if(r.ok){
+    alert(`Đã đồng bộ thành công kết quả thi của ${r.count} thí sinh ra sheet KET_QUA_MAU!`);
+  }else{
+    alert(r.err || 'Lỗi đồng bộ báo cáo.');
+  }
+}
+
+// Hàm xuất ngược Ma trận đặc tả từ ngân hàng câu hỏi hiện có
+function exportMatrix(){
+  if(!D.bank || D.bank.length === 0){ alert('Ngân hàng đề trống!'); return; }
+  let matrix = {};
+  D.bank.forEach(q=>{
+    let tag = q.tag || 'Chung';
+    let lvl = q.level || 'NB';
+    let type = q.type || 'mc';
+    if(!matrix[tag]) matrix[tag] = {NB:{mc:0,tf:0,sa:0,essay:0},TH:{mc:0,tf:0,sa:0,essay:0},VD:{mc:0,tf:0,sa:0,essay:0},VDC:{mc:0,tf:0,sa:0,essay:0}};
+    if(matrix[tag][lvl] && matrix[tag][lvl][type] !== undefined) matrix[tag][lvl][type]++;
+  });
+
+  let html = `<div class="tw"><table><tr><th>Chủ đề / Nội dung</th><th>Mức độ</th><th>Nhiều lựa chọn</th><th>Đúng / Sai</th><th>Trả lời ngắn</th><th>Tự luận</th><th>Tổng</th></tr>`;
+  Object.keys(matrix).forEach(tag=>{
+    ['NB','TH','VD','VDC'].forEach(lvl=>{
+      let r = matrix[tag][lvl];
+      let sum = r.mc + r.tf + r.sa + r.essay;
+      if(sum > 0){
+        html += `<tr><td><b>${tag}</b></td><td>${LV[lvl]}</td><td>${r.mc||''}</td><td>${r.tf||''}</td><td>${r.sa||''}</td><td>${r.essay||''}</td><td><b>${sum}</b></td></tr>`;
+      }
+    });
+  });
+  html += `</table></div>`;
+  $('#matrixBox').innerHTML = html;
+}
+
 function admin(){
   try{
     if(!adminAuthed && sessionStorage.getItem('ak')){
@@ -239,13 +281,21 @@ function admin(){
         </div>`;
       return;
     }
-    const tabs=[['bank','1. Ngân hàng đề'],['cd','2. Mã đề & Đăng mạng'],['gs','3. Giám sát & Kết quả'],['gc','4. Phân quyền & Chấm tự luận']];
+    const tabs=[['bank','1. Ngân hàng đề'],['mat','2. Ma trận đề'],['cd','3. Mã đề & Đăng mạng'],['gs','4. Giám sát & Kết quả'],['gc','5. Phân quyền & Chấm tự luận']];
     let h=`<div class="c" style="display:flex;gap:6px;flex-wrap:wrap"><div class="sub-bar"><b>Môn quản lý:</b> <span style="color:var(--pr);font-weight:bold">${currentSub}</span></div><button style="margin-left:auto;background:var(--er);color:#fff;border-color:var(--er)" onclick="sessionStorage.removeItem('ak');adminAuthed=false;show()">Đăng xuất Quản trị</button></div>
     <div class="c" style="display:flex;gap:6px;flex-wrap:wrap">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="go2('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
     
     if(tab==='bank')h+=`<div class="c"><h2>Nhập đề gốc môn ${currentSub}</h2><input type="file" accept=".docx,.json" onchange="importFile(event)"><p class="sm mu">Đọc file Word (.docx) chứa câu hỏi.</p></div>
-    <div class="c"><h2>Ngân hàng: ${D.bank.length} câu</h2><div class="tw"><table><tr><th>#</th><th>Dạng</th><th>Mức</th><th>Nội dung</th></tr>${D.bank.map((q,i)=>`<tr><td>${q.no}</td><td>${TY[q.type]}</td><td>${LV[q.level]||'—'}</td><td>${esc(String(q.stem).slice(0,100))}</td></tr>`).join('')}</table></div></div>`;
+    <div class="c" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <h2>Ngân hàng: ${D.bank.length} câu</h2>
+      <button style="margin-left:auto;background:var(--er);color:#fff;border-color:var(--er)" onclick="if(confirm('Xóa toàn bộ ${D.bank.length} câu trong ngân hàng môn ${currentSub}?')){D.bank=[];save();show();}">Xóa toàn bộ ngân hàng</button>
+    </div>
+    <div class="c"><div class="tw"><table><tr><th>#</th><th>Dạng</th><th>Mức</th><th>Nội dung</th><th>Thao tác</th></tr>${D.bank.map((q,i)=>`<tr><td>${q.no}</td><td>${TY[q.type]}</td><td>${LV[q.level]||'—'}</td><td>${esc(String(q.stem).slice(0,100))}</td><td><button style="color:var(--er);border-color:var(--er);padding:2px 6px;font-size:0.8rem" onclick="D.bank.splice(${i},1);D.bank.forEach((item,idx)=>item.no=idx+1);save();show()">Xóa</button></td></tr>`).join('')}</table></div></div>`;
     
+    if(tab==='mat'){
+      h+=`<div class="c"><h2>Ma trận đặc tả đề thi môn ${currentSub}</h2><p><button class="p" onclick="exportMatrix()">Tạo / Xem ma trận từ ngân hàng</button></p><div id="matrixBox" style="margin-top:10px"><p class="mu">Bấm nút trên để thống kê ma trận câu hỏi theo chủ đề và mức độ.</p></div></div>`;
+    }
+
     if(tab==='cd'){
       const c=D.cfg;
       h+=`<div class="c"><h2>Sinh mã đề môn ${currentSub}</h2>
@@ -260,7 +310,7 @@ function admin(){
     }
     
     if(tab==='gs'){const R=rows(),sb=R.map(r=>D.subs?.[r.sbd]),dt=sb.filter(Boolean);
-    h+=`<div class="c"><h2>Danh sách thí sinh môn ${currentSub}</h2><textarea id="ro" onchange="D.roster=this.value;save();show()" placeholder="MaHS,HoTen,Lop,MaDe,Matkhau">${esc(D.roster)}</textarea><p><button onclick="refresh()">Làm mới dữ liệu từ Server</button></p></div>
+    h+=`<div class="c"><h2>Danh sách thí sinh môn ${currentSub}</h2><textarea id="ro" onchange="D.roster=this.value;save();show()" placeholder="MaHS,HoTen,Lop,MaDe,Matkhau">${esc(D.roster)}</textarea><p><button onclick="refresh()">Làm mới dữ liệu từ Server</button> <button class="p" onclick="syncSheetReport()">Đồng bộ KET_QUA_MAU ra Sheets</button></p></div>
     <div class="c"><div class="tw"><table><tr><th>Mã HS</th><th>Họ tên</th><th>Lớp</th><th>Mã đề</th><th>Điểm</th><th>Trạng thái</th></tr>${R.map(r=>{const s=D.subs?.[r.sbd],g=s&&s.done?(s.g||{p:0}):null;return `<tr><td>${esc(r.sbd)}</td><td>${esc(r.ten)}</td><td>${esc(r.lop)}</td><td>${r.made||(s?s.code:'')}</td><td>${g?g.p.toFixed(2):''}</td><td>${s?(s.done?'Đã nộp':'Đang thi'):'Vắng'}</td></tr>`}).join('')}</table></div></div>`;}
     
     if(tab==='gc') h+=gcTab();
@@ -340,16 +390,24 @@ function parseTextToBank(txt){
   }
 }
 
-// Hàm giả lập sinh mã đề đơn giản cho admin
+// Hàm sinh mã đề: Lấy chuẩn xác đúng số câu chuẩn từ đề thi (ví dụ đúng 22 câu)
 function gen(){
-  const n = parseInt($('#nc').value)||4;
+  const n = parseInt($('#nc').value) || 4;
+  const targetCount = D.bank.length > 0 ? D.bank.length : 22;
+  
   let codes = [];
-  for(let i=1; i<=n; i++){
-    let codeNum = 100 + i;
-    codes.push({code: codeNum, qs: D.bank.slice(0, 10)});
+  for(let i = 1; i <= n; i++){
+    let codeStr = String(100 + i).padStart(4, '0');
+    let shuffledQs = JSON.parse(JSON.stringify(D.bank));
+    
+    codes.push({
+      code: codeStr, 
+      qs: shuffledQs.slice(0, targetCount)
+    });
   }
   D.cfg.codes = codes;
   save(); show();
+  alert(`Đã sinh thành công ${n} mã đề, mỗi mã đề có đúng ${targetCount} câu hỏi chuẩn theo cấu trúc!`);
 }
 
 // Form Đăng nhập Thí sinh
@@ -431,7 +489,7 @@ async function fin(){if(S.fin)return;S.fin=1;clearInterval(T);
 function result(){const g=S.g||{p:0};$('#app').innerHTML=`<div class="c" style="max-width:520px;margin:30px auto;text-align:center"><h2>Đã nộp bài môn ${currentSub}!</h2><div style="font-size:2.4rem;font-weight:800;color:var(--pr)">${g.p.toFixed(2)}<span class="mu" style="font-size:1rem"> /10</span></div><button onclick="S=null;login()">Thoát</button></div>`}
 
 const _moObs = new MutationObserver(()=>{ clearTimeout(window._mjTimer); window._mjTimer = setTimeout(()=>{ if(window.renderMathInElement) renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false}); }, 40); });
-window.addEventListener('load', ()=>{ _moObs.observe($('#app'),{childList:true,subtree:true}); if(window.renderMathInElement) renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],targetOnError:false}); });
+window.addEventListener('load', ()=>{ _moObs.observe($('#app'),{childList:true,subtree:true}); if(window.renderMathInElement) renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false}); });
 
 if(/[?&](thi|cham)/.test(location.search)){mode=/[?&]cham/.test(location.search)?'gv':'hs';['#r1','#r2','#r3'].forEach(x=>$(x).style.display='none')}
 show();
