@@ -466,10 +466,10 @@ function parseTextToBank(txt){
   let defaultType = 'mc';
 
   rawLines.forEach(l=>{
-    if(/phần\s*i/i.test(l) || /dạng\s*trắc\s*nghiệm/i.test(l)){ defaultType = 'mc'; return; }
-    if(/phần\s*ii/i.test(l) || /đúng\s*sai/i.test(l)){ defaultType = 'tf'; return; }
-    if(/phần\s*iii/i.test(l) || /trả\s*lời\s*ngắn/i.test(l)){ defaultType = 'sa'; return; }
-    if(/phần\s*iv/i.test(l) || /tự\s*luận/i.test(l)){ defaultType = 'essay'; return; }
+    if(/phần\s*1/i.test(l) || /dạng\s*trắc\s*nghiệm/i.test(l)){ defaultType = 'mc'; return; }
+    if(/phần\s*2/i.test(l) || /đúng\s*sai/i.test(l)){ defaultType = 'tf'; return; }
+    if(/phần\s*3/i.test(l) || /trả\s*lời\s*ngắn/i.test(l)){ defaultType = 'sa'; return; }
+    if(/phần\s*4/i.test(l) || /tự\s*luận/i.test(l)){ defaultType = 'essay'; return; }
 
     if(/^CHỦ\s*ĐỀ\s*[:\–\-]/i.test(l) || /^TAG\s*[:\–\-]/i.test(l)){
       let extracted = l.replace(/^CHỦ\s*ĐỀ\s*[:\–\-]/i, '').replace(/^TAG\s*[:\–\-]/i, '').trim();
@@ -477,10 +477,10 @@ function parseTextToBank(txt){
       return;
     }
 
-    if(/^CÂU\s*\d+/i.test(l) || /^Q\s*\d+/i.test(l) || /^\d+\./.test(l)){
+    if(/^CÂU\s*\d+/i.test(l) || /^Q\s*\d+/i.test(l) || /^(?:Câu|Bài)\s*\d+[\.\:]/i.test(l)){
       if(cur) bank.push(cur);
 
-      let stemText = l.replace(/^(?:CÂU\s*\d+|Q\s*\d+|\d+)\s*[\.\:]\s*/i, '').trim();
+      let stemText = l.replace(/^(?:CÂU|Bài|Q)\s*\d+\s*[\.\:]\s*/i, '').trim();
       
       let levelMatch = stemText.match(/\[(NB|TH|VD|VDC)\]/i);
       let levelVal = levelMatch ? levelMatch[1].toUpperCase() : 'NB';
@@ -499,7 +499,12 @@ function parseTextToBank(txt){
         tag: currentTag, 
         stem: stemText, 
         opt: {A:'',B:'',C:'',D:''}, 
-        st: [{k:'a',t:'Phát biểu a',lv:'NB',ok:true},{k:'b',t:'Phát biểu b',lv:'TH',ok:true},{k:'c',t:'Phát biểu c',lv:'VD',ok:true},{k:'d',t:'Phát biểu d',lv:'VDC',ok:true}],
+        st: [
+          {k:'a',t:'Phát biểu a',lv:'NB',ok:true},
+          {k:'b',t:'Phát biểu b',lv:'TH',ok:true},
+          {k:'c',t:'Phát biểu c',lv:'VD',ok:true},
+          {k:'d',t:'Phát biểu d',lv:'VDC',ok:true}
+        ],
         ans: typeVal==='sa'?['']:['A'], 
         sol:''
       };
@@ -507,28 +512,28 @@ function parseTextToBank(txt){
     }
 
     if(cur){
-      if(cur.type === 'tf' && (/^[a-d][\.\)]/i.test(l) || /^[a-d]\s*\[/i.test(l))){
-        let cleanL = l.replace(/^[a-d][\.\)]\s*/i, '');
-        let idx = {'a':0,'b':1,'c':2,'d':3}[l[0].toLowerCase()];
+      // Nhận diện dòng ý a, b, c, d của câu Đúng/Sai cực chuẩn
+      if(/^[a-d]\s*[\.\)]/i.test(l) || /^[a-d]\s*\[/i.test(l)){
+        cur.type = 'tf'; // Tự động ép về đúng dạng Đúng/Sai nếu xuất hiện ý a, b, c, d
+        let idxChar = l[0].toLowerCase();
+        let idx = {'a':0,'b':1,'c':2,'d':3}[idxChar];
+        let cleanL = l.replace(/^[a-d]\s*[\.\)]\s*/i, '').trim();
+        let lvlSubMatch = cleanL.match(/\[(NB|TH|VD|VDC)\]/i);
+        let lvlSub = lvlSubMatch ? lvlSubMatch[1].toUpperCase() : 'NB';
+        cleanL = cleanL.replace(/\[(NB|TH|VD|VDC)\]/gi, '').replace(/^#/, '').trim();
+        
         if(idx !== undefined && cur.st[idx]){
-          cur.st[idx].t = cleanL.replace(/\[(NB|TH|VD|VDC)\]/gi, '').trim();
+          cur.st[idx].t = cleanL;
+          cur.st[idx].lv = lvlSub;
         }
         return;
       }
 
-      let optMatch = l.match(/([A-D])\.\s*([^A-D\.]+(?=\s+[B-D]\.|$))/g);
-      if(optMatch && optMatch.length >= 2){
-        optMatch.forEach(o=>{
-          let k = o[0].toUpperCase();
-          let val = o.slice(2).trim();
-          cur.opt[k] = val;
-        });
-        return;
-      }
-      
-      if(/^[A-D]\./i.test(l)){
-        let k = l[0].toUpperCase();
-        cur.opt[k] = l.slice(2).trim();
+      // Nhận diện đáp án A, B, C, D của câu trắc nghiệm
+      let optMatch = l.match(/^([A-D])[\.\)]\s*(.*)/);
+      if(optMatch){
+        let k = optMatch[1].toUpperCase();
+        cur.opt[k] = optMatch[2].trim();
         return;
       }
 
