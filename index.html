@@ -248,7 +248,7 @@ function exportMatrix(){
   let totals = {mc:0, tf:0, sa:0, essay:0, all:0};
   
   D.bank.forEach(q=>{
-    let tag = q.tag && q.tag !== 'Chung' ? q.tag : 'Chủ đề chung';
+    let tag = q.tag && q.tag.trim() !== '' ? q.tag.trim() : 'Chủ đề chung';
     let lvl = q.level || 'NB';
     let type = q.type || 'mc';
     if(!matrix[tag]) matrix[tag] = {NB:{mc:0,tf:0,sa:0,essay:0},TH:{mc:0,tf:0,sa:0,essay:0},VD:{mc:0,tf:0,sa:0,essay:0},VDC:{mc:0,tf:0,sa:0,essay:0}};
@@ -272,7 +272,7 @@ function exportMatrix(){
       if(sum > 0){
         html += `<tr>
           <td>${stt++}</td>
-          <td><b>${tag}</b></td>
+          <td><b>${esc(tag)}</b></td>
           <td>${LV[lvl]}</td>
           <td style="text-align:center">${r.mc || ''}</td>
           <td style="text-align:center">${r.tf || ''}</td>
@@ -320,7 +320,14 @@ function admin(){
       <h2>Ngân hàng: ${D.bank.length} câu</h2>
       <button style="margin-left:auto;background:var(--er);color:#fff;border-color:var(--er)" onclick="if(confirm('Xóa toàn bộ ${D.bank.length} câu trong ngân hàng môn ${currentSub}?')){D.bank=[];save();show();}">Xóa toàn bộ ngân hàng</button>
     </div>
-    <div class="c"><div class="tw"><table><tr><th>#</th><th>Dạng</th><th>Mức</th><th>Nội dung</th><th>Thao tác</th></tr>${D.bank.map((q,i)=>`<tr><td>${q.no}</td><td>${TY[q.type]}</td><td>${LV[q.level]||'—'}</td><td>${esc(String(q.stem).slice(0,100))}</td><td><button style="color:var(--er);border-color:var(--er);padding:2px 6px;font-size:0.8rem" onclick="D.bank.splice(${i},1);D.bank.forEach((item,idx)=>item.no=idx+1);save();show()">Xóa</button></td></tr>`).join('')}</table></div></div>`;
+    <div class="c"><div class="tw"><table><tr><th>#</th><th>Chủ đề (Tag)</th><th>Dạng</th><th>Mức</th><th>Nội dung</th><th>Thao tác</th></tr>${D.bank.map((q,i)=>`<tr>
+      <td>${q.no}</td>
+      <td><input style="width:110px;padding:3px 6px" value="${esc(q.tag||'Hàm số')}" placeholder="Tên chủ đề..." onchange="D.bank[${i}].tag=this.value;save()"></td>
+      <td>${TY[q.type]}</td>
+      <td><select onchange="D.bank[${i}].level=this.value;save()"><option value="NB" ${q.level==='NB'?'selected':''}>Nhận biết</option><option value="TH" ${q.level==='TH'?'selected':''}>Thông hiểu</option><option value="VD" ${q.level==='VD'?'selected':''}>Vận dụng</option><option value="VDC" ${q.level==='VDC'?'selected':''}>VD cao</option></select></td>
+      <td>${esc(String(q.stem).slice(0,100))}</td>
+      <td><button style="color:var(--er);border-color:var(--er);padding:2px 6px;font-size:0.8rem" onclick="D.bank.splice(${i},1);D.bank.forEach((item,idx)=>item.no=idx+1);save();show()">Xóa</button></td>
+    </tr>`).join('')}</table></div></div>`;
     
     if(tab==='mat'){
       h+=`<div class="c"><h2>Ma trận đặc tả đề thi môn ${currentSub}</h2><p><button class="p" onclick="exportMatrix()">Tạo / Xem ma trận từ ngân hàng</button></p><div id="matrixBox" style="margin-top:10px"><p class="mu">Bấm nút trên để thống kê ma trận câu hỏi theo chủ đề và mức độ.</p></div></div>`;
@@ -402,7 +409,10 @@ function parseTextToBank(txt){
   lines.forEach(l=>{
     if(/^CÂU\s*\d+/i.test(l) || /^Q\s*\d+/i.test(l) || /^\d+\./.test(l)){
       if(cur) bank.push(cur);
-      cur = {type:'mc', level:'NB', tag:'Chung', stem:l.replace(/^\d+\.\s*/,''), opt:{A:'',B:'',C:'',D:''}, ans:['A'], sol:''};
+      let tagMatch = l.match(/\[(?:Chủ đề|Tag):\s*([^\]]+)\]/i);
+      let tagVal = tagMatch ? tagMatch[1].trim() : 'Hàm số';
+      let stemText = l.replace(/^\d+\.\s*/,'').replace(/\[(?:Chủ đề|Tag):\s*([^\]]+)\]/i,'').trim();
+      cur = {type:'mc', level:'NB', tag:tagVal, stem:stemText, opt:{A:'',B:'',C:'',D:''}, ans:['A'], sol:''};
     } else if(cur && /^[A-D]\./i.test(l)){
       let k = l[0].toUpperCase();
       cur.opt[k] = l.slice(2).trim();
