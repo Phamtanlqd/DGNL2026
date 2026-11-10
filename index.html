@@ -82,7 +82,7 @@ function changeSubject(sub){
   currentSub = sub;
   D = loadSub(sub);
   D.gr = D.gr || []; D.grades = D.grades || {}; D.cfg.emax = D.cfg.emax || 2; D.cfg.thr = D.cfg.thr ?? 1; D.imgs = D.imgs || {};
-  const sel = $('#globalSub'); if(sel) sel.value = sub;
+  const sel = document.getElementById('globalSub'); if(sel) sel.value = sub;
   show();
 }
 
@@ -102,7 +102,7 @@ function AK(){
 }
 
 async function adminLogin(){
-  const pass=$('#adPass'].value.trim();
+  const pass=document.getElementById('adPass').value.trim();
   if(!pass){alert('Vui lòng nhập mật khẩu quản trị!');return;}
   const r=await api('admin_login',{key:pass});
   if(r.ok){
@@ -132,7 +132,7 @@ let _t;
 function push(){if(!API_URL||!S||S.done||mode!=='hs')return;clearTimeout(_t);_t=setTimeout(()=>api('save',{sbd:S.sbd,subject:currentSub,token:S.token,ans:S.ans,viol:S.viol,qi:S.qi}),2500)}
 
 async function enter(){
-  const sbd=$('#sb'].value.trim(), pass=$('#sp'].value.trim();
+  const sbd=document.getElementById('sb').value.trim(), pass=document.getElementById('sp').value.trim();
   if(!sbd) return;
   const r=await api('login',{sbd,pass,subject:currentSub});
   if(!r.ok){alert(r.err);return}
@@ -188,7 +188,7 @@ function gcTab(){
 }
 
 function gvView(){
-  GV?gvMain():$('#app').innerHTML=`
+  GV?gvMain():document.getElementById('app').innerHTML=`
     <div class="c" style="max-width:420px;margin:30px auto">
       <h2>Giám khảo chấm tự luận môn ${currentSub}</h2>
       <label class="sm">Tài khoản / Mã giám khảo<br><input id="gu" placeholder="Nhập tài khoản..." style="width:100%"></label>
@@ -198,7 +198,7 @@ function gvView(){
 }
 
 async function gvIn(){
-  const user=$('#gu'].value.trim(), pin=$('#gp'].value.trim();
+  const user=document.getElementById('gu').value.trim(), pin=document.getElementById('gp').value.trim();
   const r=await rpcG('g_login',{user,pin});
   if(!r.ok){alert(r.err);return}
   const l=await rpcG('g_list',{user,pin});
@@ -211,21 +211,21 @@ async function gvReload(){const l=await rpcG('g_list',{user:GV.user,pin:GV.pin})
 
 function gvMain(){
  const T=GV.tasks,t=T[GV.i],dn=T.filter(x=>x.items.every(i=>i.mine)).length,hd=`<div class="c" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div style="flex:1"><b>${esc(GV.name)}</b> · Vòng ${GV.round} (Môn ${currentSub})<div class="sm mu">Lớp phụ trách: ${esc(GV.classes)} · Đã chấm ${dn}/${T.length} bài</div></div><button onclick="gvReload()">Tải lại</button><button onclick="GV=null;gvView()">Thoát</button></div>`;
- if(!t){$('#app').innerHTML=hd+'<div class="c mu">Chưa có bài tự luận nào được nộp thuộc lớp bạn phụ trách.</div>';return}
- $('#app').innerHTML=hd+`<div class="ex"><div>${t.items.map((it,k)=>`<div class="c"><div class="sm mu">Bài ${GV.i+1} · Câu tự luận số ${it.no}</div><p style="white-space:pre-wrap"><b>${ER(it.stem)}</b></p><details><summary class="sm">Hướng dẫn chấm</summary><pre class="sm">${esc(it.sol||'(chưa có)')}</pre></details><div class="al" style="background:var(--bg);color:var(--tx)"><pre>${esc(it.ans||'(thí sinh bỏ trống)')}</pre></div><div class="tr"><span>Điểm (0 đến ${GV.emax}):</span><input id="sc${k}" type="number" min="0" max="${GV.emax}" step="0.25" value="${it.mine?it.mine.score:''}" style="width:90px"></div><input id="nt${k}" placeholder="Nhận xét (không bắt buộc)" value="${esc(it.mine?it.mine.note||'':'')}" style="width:100%;margin-top:6px"></div>`).join('')}
+ if(!t){document.getElementById('app').innerHTML=hd+'<div class="c mu">Chưa có bài tự luận nào được nộp thuộc lớp bạn phụ trách.</div>';return}
+ document.getElementById('app').innerHTML=hd+`<div class="ex"><div>${t.items.map((it,k)=>`<div class="c"><div class="sm mu">Bài ${GV.i+1} · Câu tự luận số ${it.no}</div><p style="white-space:pre-wrap"><b>${ER(it.stem)}</b></p><details><summary class="sm">Hướng dẫn chấm</summary><pre class="sm">${esc(it.sol||'(chưa có)')}</pre></details><div class="al" style="background:var(--bg);color:var(--tx)"><pre>${esc(it.ans||'(thí sinh bỏ trống)')}</pre></div><div class="tr"><span>Điểm (0 đến ${GV.emax}):</span><input id="sc${k}" type="number" min="0" max="${GV.emax}" step="0.25" value="${it.mine?it.mine.score:''}" style="width:90px"></div><input id="nt${k}" placeholder="Nhận xét (không bắt buộc)" value="${esc(it.mine?it.mine.note||'':'')}" style="width:100%;margin-top:6px"></div>`).join('')}
  <p><button onclick="GV.i--;gvMain()" ${GV.i?'':'disabled'}>← Bài trước</button> <button class="p" onclick="gvSave()">Lưu và bài sau →</button></p></div>
  <div class="c"><b class="sm">Danh sách bài</b><div class="pl" style="margin-top:8px">${T.map((x,i)=>`<button class="${x.items.every(z=>z.mine)?'d':''} ${i===GV.i?'u':''}" onclick="GV.i=${i};gvMain()">${i+1}</button>`).join('')}</div></div></div>`;
 }
 
-async function gvSave(){const t=GV.tasks[GV.i],b=t.items.map((it,k)=>({it,s:$('#sc'+k).value,n:$('#nt'+k).value}));
+async function gvSave(){const t=GV.tasks[GV.i],b=t.items.map((it,k)=>({it,s:document.getElementById('sc'+k).value,n:document.getElementById('nt'+k).value}));
  if(b.some(x=>x.s===''||+x.s<0||+x.s>GV.emax)){alert(`Nhập điểm từ 0 đến ${GV.emax} cho mọi câu.`);return}
  const rs=await Promise.all(b.map(x=>rpcG('g_save',{user:GV.user,pin:GV.pin,sbd:t.id,no:x.it.no,score:+x.s,note:x.n}))),bad=rs.find(r=>!r.ok);if(bad){alert(bad.err);return}
  b.forEach(x=>x.it.mine={score:+x.s,note:x.n});if(GV.i<GV.tasks.length-1)GV.i++;gvMain()}
 
 function role(r){mode=r;show()}
 function show(){
-  $('#r1').className=mode==='ad'?'on':'';$('#r2').className=mode==='hs'?'on':'';$('#r3').className=mode==='gv'?'on':'';
-  $('#subSelectorBox').style.display = (mode==='hs' && S && !S.done) ? 'none' : 'inline-flex';
+  document.getElementById('r1').className=mode==='ad'?'on':'';document.getElementById('r2').className=mode==='hs'?'on':'';document.getElementById('r3').className=mode==='gv'?'on':'';
+  document.getElementById('subSelectorBox').style.display = (mode==='hs' && S && !S.done) ? 'none' : 'inline-flex';
   clearInterval(T);
   mode==='ad'?admin():mode==='gv'?gvView():(S&&!S.done?exam():login());
 }
@@ -325,7 +325,7 @@ function exportMatrix(){
   </tr>`;
 
   html += `</table></div>`;
-  $('#matrixBox').innerHTML = html;
+  document.getElementById('matrixBox').innerHTML = html;
 }
 
 function admin(){
@@ -334,7 +334,7 @@ function admin(){
       adminAuthed=true;
     }
     if(!adminAuthed){
-      $('#app').innerHTML=`
+      document.getElementById('app').innerHTML=`
         <div class="c" style="max-width:420px;margin:30px auto">
           <h2>Đăng nhập Quản trị viên (${currentSub})</h2>
           <label class="sm">Mật khẩu Quản trị<br><input id="adPass" type="password" style="width:100%" placeholder="Nhập mật khẩu quản trị..."></label>
@@ -383,9 +383,9 @@ function admin(){
     
     if(tab==='gc') h+=gcTab();
 
-    $('#app').innerHTML=h;
+    document.getElementById('app').innerHTML=h;
   }catch(err){
-    $('#app').innerHTML=`<div class="c" style="color:var(--er)"><h2>Lỗi giao diện Quản trị</h2><p>${esc(err.message)}</p><button onclick="localStorage.clear();location.reload()">Đặt lại bộ nhớ trình duyệt</button></div>`;
+    document.getElementById('app').innerHTML=`<div class="c" style="color:var(--er)"><h2>Lỗi giao diện Quản trị</h2><p>${esc(err.message)}</p><button onclick="localStorage.clear();location.reload()">Đặt lại bộ nhớ trình duyệt</button></div>`;
   }
 }
 
@@ -527,7 +527,7 @@ function parseTextToBank(txt){
         return;
       }
 
-      // Xử lý quét đáp án A, B, C, D linh hoạt theo mọi bố cục cột/dòng
+      // Xử lý quét đáp án A, B, C, D linh hoạt theo các định dạng cột/ngang trong Word
       let optMatch = l.match(/^([A-D])[\.\)]\s*(.+)/);
       if(optMatch){
         let k = optMatch[1].toUpperCase();
@@ -536,7 +536,6 @@ function parseTextToBank(txt){
         return;
       }
 
-      // Trường hợp các đáp án nằm chung trên một dòng (hoặc nhiều đáp án trong 1 đoạn)
       let matches = [...l.matchAll(/([A-D])[\.\)]\s*([^A-D\n]+?)(?=\s+[A-D]\.|$)/g)];
       if(matches.length > 0){
         matches.forEach(m=>{
@@ -572,7 +571,7 @@ function parseTextToBank(txt){
 }
 
 function gen(){
-  const n = parseInt($('#nc'].value) || 4;
+  const n = parseInt(document.getElementById('nc').value) || 4;
   const targetCount = D.bank.length > 0 ? D.bank.length : 22;
   
   let codes = [];
@@ -591,7 +590,7 @@ function gen(){
 }
 
 function login(){
-  $('#app'].innerHTML=`
+  document.getElementById('app').innerHTML=`
     <div class="c" style="max-width:440px;margin:30px auto">
       <h2>Phòng thi trực tuyến (${currentSub})</h2>
       <label class="sm">Mã học sinh (SBD)<br><input id="sb" placeholder="VD: 10001" style="width:100%"></label>
@@ -630,7 +629,7 @@ function exam(){
     return `<button class="${done?'d':''} ${S.flag?.[i]?'f':''} ${i===S.qi?'u':''}" onclick="S.qi=${i};save();exam()">${i+1}</button>`;
   }).join('');
 
-  $('#app'].innerHTML=`
+  document.getElementById('app').innerHTML=`
     <div class="c" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <div style="flex:1"><b>${esc(S.title||'Bài thi')} · Môn ${currentSub}</b> · Mã đề ${S.code}<div class="sm mu">${esc(S.name)} · SBD ${esc(S.sbd)}</div></div>
       <div id="tm">--:--</div>
@@ -661,17 +660,17 @@ function exam(){
 function ans(v, keep){ S.ans[S.qi] = v; push(); if(!keep) exam(); }
 function tf(k, v){ const a = (S.ans[S.qi] || [null,null,null,null]).slice(); a[k] = v; S.ans[S.qi] = a; push(); exam(); }
 
-function tick(){const r=Math.max(0,Math.round(((S.endAt||S.start+D.cfg.min*60000)-(Date.now()+(S.off||0)))/1000)),e=$('#tm');if(e)e.textContent=Math.floor(r/60)+':'+String(r%60).padStart(2,'0');if(r<=0&&!S.fin)fin()}
+function tick(){const r=Math.max(0,Math.round(((S.endAt||S.start+D.cfg.min*60000)-(Date.now()+(S.off||0)))/1000)),e=document.getElementById('tm');if(e)e.textContent=Math.floor(r/60)+':'+String(r%60).padStart(2,'0');if(r<=0&&!S.fin)fin()}
 function submit(){if(confirm('Nộp bài thi '+currentSub+'?'))fin()}
 async function fin(){if(S.fin)return;S.fin=1;clearInterval(T);
  const r=await api('submit',{sbd:S.sbd,subject:currentSub,token:S.token,ans:S.ans,viol:S.viol});
  if(!r.ok){S.fin=0;alert(r.err);return}
  S.g=r.g;S.done=true;result()}
-function result(){const g=S.g||{p:0};$('#app').innerHTML=`<div class="c" style="max-width:520px;margin:30px auto;text-align:center"><h2>Đã nộp bài môn ${currentSub}!</h2><div style="font-size:2.4rem;font-weight:800;color:var(--pr)">${g.p.toFixed(2)}<span class="mu" style="font-size:1rem"> /10</span></div><button onclick="S=null;login()">Thoát</button></div>`}
+function result(){const g=S.g||{p:0};document.getElementById('app').innerHTML=`<div class="c" style="max-width:520px;margin:30px auto;text-align:center"><h2>Đã nộp bài môn ${currentSub}!</h2><div style="font-size:2.4rem;font-weight:800;color:var(--pr)">${g.p.toFixed(2)}<span class="mu" style="font-size:1rem"> /10</span></div><button onclick="S=null;login()">Thoát</button></div>`}
 
-const _moObs = new MutationObserver(()=>{ clearTimeout(window._mjTimer); window._mjTimer = setTimeout(()=>{ if(window.renderMathInElement) renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false}); }, 40); });
-window.addEventListener('load', ()=>{ _moObs.observe($('#app'),{childList:true,subtree:true}); if(window.renderMathInElement) renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false}); });
+const _moObs = new MutationObserver(()=>{ clearTimeout(window._mjTimer); window._mjTimer = setTimeout(()=>{ if(window.renderMathInElement) renderMathInElement(document.getElementById('app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false}); }, 40); });
+window.addEventListener('load', ()=>{ _moObs.observe(document.getElementById('app'),{childList:true,subtree:true}); if(window.renderMathInElement) renderMathInElement(document.getElementById('app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false}); });
 
-if(/[?&](thi|cham)/.test(location.search)){mode=/[?&]cham/.test(location.search)?'gv':'hs';['#r1','#r2','#r3'].forEach(x=>$(x).style.display='none')}
+if(/[?&](thi|cham)/.test(location.search)){mode=/[?&]cham/.test(location.search)?'gv':'hs';['#r1','#r2','#r3'].forEach(x=>document.querySelector(x).style.display='none')}
 show();
 </script></body></html>
