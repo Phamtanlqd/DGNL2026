@@ -102,7 +102,7 @@ function AK(){
 }
 
 async function adminLogin(){
-  const pass=$('#adPass').value.trim();
+  const pass=$('#adPass'].value.trim();
   if(!pass){alert('Vui lòng nhập mật khẩu quản trị!');return;}
   const r=await api('admin_login',{key:pass});
   if(r.ok){
@@ -132,7 +132,7 @@ let _t;
 function push(){if(!API_URL||!S||S.done||mode!=='hs')return;clearTimeout(_t);_t=setTimeout(()=>api('save',{sbd:S.sbd,subject:currentSub,token:S.token,ans:S.ans,viol:S.viol,qi:S.qi}),2500)}
 
 async function enter(){
-  const sbd=$('#sb').value.trim(), pass=$('#sp').value.trim();
+  const sbd=$('#sb'].value.trim(), pass=$('#sp'].value.trim();
   if(!sbd) return;
   const r=await api('login',{sbd,pass,subject:currentSub});
   if(!r.ok){alert(r.err);return}
@@ -198,7 +198,7 @@ function gvView(){
 }
 
 async function gvIn(){
-  const user=$('#gu').value.trim(), pin=$('#gp').value.trim();
+  const user=$('#gu'].value.trim(), pin=$('#gp'].value.trim();
   const r=await rpcG('g_login',{user,pin});
   if(!r.ok){alert(r.err);return}
   const l=await rpcG('g_list',{user,pin});
@@ -527,8 +527,8 @@ function parseTextToBank(txt){
         return;
       }
 
-      // Xử lý bắt đáp án A, B, C, D độc lập từng dòng
-      let optMatch = l.match(/^([A-D])[\.\)]\s*(.*)/);
+      // Xử lý quét đáp án A, B, C, D linh hoạt theo mọi bố cục cột/dòng
+      let optMatch = l.match(/^([A-D])[\.\)]\s*(.+)/);
       if(optMatch){
         let k = optMatch[1].toUpperCase();
         let val = optMatch[2].trim();
@@ -536,16 +536,13 @@ function parseTextToBank(txt){
         return;
       }
 
-      // Xử lý bắt các đáp án nằm trên cùng một dòng (ví dụ: A. ... B. ... C. ... D. ...)
-      let multiOpt = l.match(/([A-D])[\.\)]\s*([^A-D\n]+)/g);
-      if(multiOpt && multiOpt.length >= 1){
-        multiOpt.forEach(o=>{
-          let parts = o.match(/^([A-D])[\.\)]\s*(.*)/);
-          if(parts){
-            let k = parts[1].toUpperCase();
-            let val = parts[2].trim();
-            if(val) cur.opt[k] = val;
-          }
+      // Trường hợp các đáp án nằm chung trên một dòng (hoặc nhiều đáp án trong 1 đoạn)
+      let matches = [...l.matchAll(/([A-D])[\.\)]\s*([^A-D\n]+?)(?=\s+[A-D]\.|$)/g)];
+      if(matches.length > 0){
+        matches.forEach(m=>{
+          let k = m[1].toUpperCase();
+          let val = m[2].trim();
+          if(val) cur.opt[k] = val;
         });
         return;
       }
@@ -575,7 +572,7 @@ function parseTextToBank(txt){
 }
 
 function gen(){
-  const n = parseInt($('#nc').value) || 4;
+  const n = parseInt($('#nc'].value) || 4;
   const targetCount = D.bank.length > 0 ? D.bank.length : 22;
   
   let codes = [];
@@ -594,7 +591,7 @@ function gen(){
 }
 
 function login(){
-  $('#app').innerHTML=`
+  $('#app'].innerHTML=`
     <div class="c" style="max-width:440px;margin:30px auto">
       <h2>Phòng thi trực tuyến (${currentSub})</h2>
       <label class="sm">Mã học sinh (SBD)<br><input id="sb" placeholder="VD: 10001" style="width:100%"></label>
@@ -633,7 +630,7 @@ function exam(){
     return `<button class="${done?'d':''} ${S.flag?.[i]?'f':''} ${i===S.qi?'u':''}" onclick="S.qi=${i};save();exam()">${i+1}</button>`;
   }).join('');
 
-  $('#app').innerHTML=`
+  $('#app'].innerHTML=`
     <div class="c" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <div style="flex:1"><b>${esc(S.title||'Bài thi')} · Môn ${currentSub}</b> · Mã đề ${S.code}<div class="sm mu">${esc(S.name)} · SBD ${esc(S.sbd)}</div></div>
       <div id="tm">--:--</div>
