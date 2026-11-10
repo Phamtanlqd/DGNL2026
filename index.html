@@ -320,12 +320,12 @@ function admin(){
       <h2>Ngân hàng: ${D.bank.length} câu</h2>
       <button style="margin-left:auto;background:var(--er);color:#fff;border-color:var(--er)" onclick="if(confirm('Xóa toàn bộ ${D.bank.length} câu trong ngân hàng môn ${currentSub}?')){D.bank=[];save();show();}">Xóa toàn bộ ngân hàng</button>
     </div>
-    <div class="c"><div class="tw"><table><tr><th>#</th><th>Chủ đề (Tag)</th><th>Dạng</th><th>Mức</th><th>Nội dung</th><th>Thao tác</th></tr>${D.bank.map((q,i)=>`<tr>
+    <div class="c"><div class="tw"><table><tr><th>#</th><th>Chủ đề (Tag)</th><th>Dạng</th><th>Mức</th><th>Nội dung câu hỏi</th><th>Thao tác</th></tr>${D.bank.map((q,i)=>`<tr>
       <td>${q.no}</td>
-      <td><input style="width:130px;padding:3px 6px" value="${esc(q.tag||'Chung')}" placeholder="Tên chủ đề..." onchange="D.bank[${i}].tag=this.value;save()"></td>
+      <td><input style="width:130px;padding:3px 6px" value="${esc(q.tag||'Chủ đề chung')}" placeholder="Tên chủ đề..." onchange="D.bank[${i}].tag=this.value;save()"></td>
       <td>${TY[q.type]}</td>
       <td><select onchange="D.bank[${i}].level=this.value;save()"><option value="NB" ${q.level==='NB'?'selected':''}>Nhận biết</option><option value="TH" ${q.level==='TH'?'selected':''}>Thông hiểu</option><option value="VD" ${q.level==='VD'?'selected':''}>Vận dụng</option><option value="VDC" ${q.level==='VDC'?'selected':''}>VD cao</option></select></td>
-      <td>${esc(String(q.stem).slice(0,100))}</td>
+      <td>${esc(String(q.stem).slice(0,120))}</td>
       <td><button style="color:var(--er);border-color:var(--er);padding:2px 6px;font-size:0.8rem" onclick="D.bank.splice(${i},1);D.bank.forEach((item,idx)=>item.no=idx+1);save();show()">Xóa</button></td>
     </tr>`).join('')}</table></div></div>`;
     
@@ -348,7 +348,7 @@ function admin(){
     
     if(tab==='gs'){const R=rows(),sb=R.map(r=>D.subs?.[r.sbd]),dt=sb.filter(Boolean);
     h+=`<div class="c"><h2>Danh sách thí sinh môn ${currentSub}</h2><textarea id="ro" onchange="D.roster=this.value;save();show()" placeholder="MaHS,HoTen,Lop,MaDe,Matkhau">${esc(D.roster)}</textarea><p><button onclick="refresh()">Làm mới dữ liệu từ Server</button> <button class="p" onclick="syncSheetReport()">Đồng bộ KET_QUA_MAU ra Sheets</button></p></div>
-    <div class="c"><div class="tw"><table><tr><th>Mã HS</th><th>Họ tên</th><th>Lớp</th><th>Mã đề</th><th>Điểm</th><th>Trạng thái</th></tr>${R.map(r=>{const s=D.subs?.[r.sbd],g=s&&s.done?(s.g||{p:0}):null;return `<tr><td>${esc(r.sbd)}</td><td>${esc(r.ten)}</td><td>${esc(r.lop)}</td><td>${r.made||(s?s.code:'')}</td><td>${g?g.p.toFixed(2):''}</td><td>${s?(s.done?'Đã nộp':'Desing'):'Vắng'}</td></tr>`}).join('')}</table></div></div>`;}
+    <div class="c"><div class="tw"><table><tr><th>Mã HS</th><th>Họ tên</th><th>Lớp</th><th>Mã đề</th><th>Điểm</th><th>Trạng thái</th></tr>${R.map(r=>{const s=D.subs?.[r.sbd],g=s&&s.done?(s.g||{p:0}):null;return `<tr><td>${esc(r.sbd)}</td><td>${esc(r.ten)}</td><td>${esc(r.lop)}</td><td>${r.made||(s?s.code:'')}</td><td>${g?g.p.toFixed(2):''}</td><td>${s?(s.done?'Đã nộp':'Đang thi'):'Vắng'}</td></tr>`}).join('')}</table></div></div>`;}
     
     if(tab==='gc') h+=gcTab();
 
@@ -358,7 +358,7 @@ function admin(){
   }
 }
 
-// Xử lý danh sách thí sinh từ định dạng MaHS,HoTen,Lop,MaDe,Matkhau
+// Xử lý danh sách thí sinh
 function rows(){
   return String(D.roster||'').split('\n').map(l=>{
     const p=l.split(',').map(x=>x.trim());
@@ -366,7 +366,7 @@ function rows(){
   }).filter(r=>r.sbd);
 }
 
-// Hàm bổ sung xử lý đọc file Word (.docx) đề gốc tránh lỗi trắng trang
+// Đọc file Word (.docx) chuyên sâu & bóc tách sạch 100% phần [HDG] dính vào câu
 async function importFile(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -404,51 +404,68 @@ async function importFile(e){
 }
 
 function parseTextToBank(txt){
-  const lines = txt.split('\n').map(l=>l.trim()).filter(Boolean);
+  const rawLines = txt.split('\n').map(l=>l.trim()).filter(Boolean);
   let bank = [], cur = null;
-  let currentTag = 'Chủ đề chung';
+  let currentTag = 'HÀM SỐ';
+  let isHDG = false;
 
-  lines.forEach(l=>{
-    // Nhận diện dòng tiêu đề chủ đề (VD: CHỦ ĐỀ: HÀM SỐ...)
+  rawLines.forEach(l=>{
+    // 1. Nhận diện dòng chuyển Chủ đề
     if(/^CHỦ\s*ĐỀ\s*[:\–\-]/i.test(l) || /^TAG\s*[:\–\-]/i.test(l)){
-      currentTag = l.replace(/^CHỦ\s*ĐỀ\s*[:\–\-]/i, '').replace(/^TAG\s*[:\–\-]/i, '').trim();
+      let extracted = l.replace(/^CHỦ\s*ĐỀ\s*[:\–\-]/i, '').replace(/^TAG\s*[:\–\-]/i, '').trim();
+      if(extracted) currentTag = extracted;
+      isHDG = false;
       return;
     }
 
+    // 2. Bắt đầu một câu mới
     if(/^CÂU\s*\d+/i.test(l) || /^Q\s*\d+/i.test(l) || /^\d+\./.test(l)){
       if(cur) bank.push(cur);
+      isHDG = false;
+
+      let stemText = l.replace(/^(?:CÂU\s*\d+|Q\s*\d+|\d+)\s*[\.\:]\s*/i, '').trim();
       
-      let stemText = l.replace(/^\d+\.\s*/,'').trim();
-      
-      // Nhận diện mức độ [NB], [TH], [VD], [VDC]
+      // Bóc tách mức độ NB, TH, VD, VDC
       let levelMatch = stemText.match(/\[(NB|TH|VD|VDC)\]/i);
       let levelVal = levelMatch ? levelMatch[1].toUpperCase() : 'NB';
       stemText = stemText.replace(/\[(NB|TH|VD|VDC)\]/i, '').trim();
 
       cur = {type:'mc', level:levelVal, tag:currentTag, stem:stemText, opt:{A:'',B:'',C:'',D:''}, ans:['A'], sol:''};
-    } else if(cur && /^[A-D]\./i.test(l)){
+      return;
+    }
+
+    // 3. Đọc các lựa chọn A, B, C, D
+    if(cur && !isHDG && /^[A-D]\./i.test(l)){
       let k = l[0].toUpperCase();
       cur.opt[k] = l.slice(2).trim();
-    } else if(cur){
-      if(/^\[HDG\]/i.test(l) || /^HDG:/i.test(l)){
-        cur.sol = l;
-      } else {
-        cur.stem += '\n' + l;
-      }
+      return;
+    }
+
+    // 4. Nhận diện phần Hướng dẫn giải [HDG] -> Bỏ qua không cho dính vào thân câu
+    if(/^\[HDG\]/i.test(l) || /^HDG:/i.test(l) || /Vị trí đặt lời giải/i.test(l)){
+      isHDG = true;
+      if(cur) cur.sol = l;
+      return;
+    }
+
+    // 5. Nếu đang ở dòng text thuộc đề bài câu hiện tại
+    if(cur && !isHDG){
+      cur.stem += '\n' + l;
     }
   });
+
   if(cur) bank.push(cur);
 
   if(bank.length > 0){
     D.bank = bank.map((q,i)=>({...q, no:i+1}));
     save(); show();
-    alert(`Đã nhập thành công ${bank.length} câu hỏi và phân tách đúng chủ đề từ file Word!`);
+    alert(`Đã bóc tách thành công ${bank.length} câu hỏi chuẩn sạch từ file Word!`);
   } else {
-    alert('Không tìm thấy cấu trúc câu hỏi phù hợp trong file.');
+    alert('Không tìm thấy cấu trúc câu hỏi phù hợp trong file Word.');
   }
 }
 
-// Hàm sinh mã đề: Lấy chuẩn xác đúng số câu chuẩn từ đề thi (ví dụ đúng 22 câu)
+// Sinh mã đề
 function gen(){
   const n = parseInt($('#nc').value) || 4;
   const targetCount = D.bank.length > 0 ? D.bank.length : 22;
