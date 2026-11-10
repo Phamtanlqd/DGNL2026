@@ -122,7 +122,8 @@ async function pub(){
 async function refresh(){const r=await api('stats',{key:AK()});if(!r.ok){alert(r.err);return}D.subs=r.subs;show()}
 function go2(t){tab=t;if(t==='gs'&&API_URL)refresh();else if(t==='gc')gcLoad();else show()}
 
-let _t;function push(){if(!API_URL||!S||S.done||mode!=='hs')return;clearTimeout(_t);_t=setTimeout(()=>api('save',{sbd:S.sbd,subject:currentSub,token:S.token,ans:S.ans,viol:S.viol,qi:S.qi}),2500)}
+let _t;
+function push(){if(!API_URL||!S||S.done||mode!=='hs')return;clearTimeout(_t);_t=setTimeout(()=>api('save',{sbd:S.sbd,subject:currentSub,token:S.token,ans:S.ans,viol:S.viol,qi:S.qi}),2500)}
 
 // Đăng nhập Thí sinh (SBD + Pass)
 async function enter(){
@@ -421,7 +422,6 @@ function exam(){
 function ans(v, keep){ S.ans[S.qi] = v; push(); if(!keep) exam(); }
 function tf(k, v){ const a = (S.ans[S.qi] || [null,null,null,null]).slice(); a[k] = v; S.ans[S.qi] = a; push(); exam(); }
 
-let _t;
 function tick(){const r=Math.max(0,Math.round(((S.endAt||S.start+D.cfg.min*60000)-(Date.now()+(S.off||0)))/1000)),e=$('#tm');if(e)e.textContent=Math.floor(r/60)+':'+String(r%60).padStart(2,'0');if(r<=0&&!S.fin)fin()}
 function submit(){if(confirm('Nộp bài thi môn '+currentSub+'?'))fin()}
 async function fin(){if(S.fin)return;S.fin=1;clearInterval(T);
@@ -431,7 +431,7 @@ async function fin(){if(S.fin)return;S.fin=1;clearInterval(T);
 function result(){const g=S.g||{p:0};$('#app').innerHTML=`<div class="c" style="max-width:520px;margin:30px auto;text-align:center"><h2>Đã nộp bài môn ${currentSub}!</h2><div style="font-size:2.4rem;font-weight:800;color:var(--pr)">${g.p.toFixed(2)}<span class="mu" style="font-size:1rem"> /10</span></div><button onclick="S=null;login()">Thoát</button></div>`}
 
 const _moObs = new MutationObserver(()=>{ clearTimeout(window._mjTimer); window._mjTimer = setTimeout(()=>{ if(window.renderMathInElement) renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false}); }, 40); });
-window.addEventListener('load', ()=>{ _moObs.observe($('#app'),{childList:true,subtree:true}); if(window.renderMathInElement) renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false}); });
+window.addEventListener('load', ()=>{ _moObs.observe($('#app'),{childList:true,subtree:true}); if(window.renderMathInElement) renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],targetOnError:false}); });
 
 if(/[?&](thi|cham)/.test(location.search)){mode=/[?&]cham/.test(location.search)?'gv':'hs';['#r1','#r2','#r3'].forEach(x=>$(x).style.display='none')}
 show();
