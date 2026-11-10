@@ -379,7 +379,7 @@ function admin(){
     
     if(tab==='gs'){const R=rows(),sb=R.map(r=>D.subs?.[r.sbd]),dt=sb.filter(Boolean);
     h+=`<div class="c"><h2>Danh sách thí sinh môn ${currentSub}</h2><textarea id="ro" onchange="D.roster=this.value;save();show()" placeholder="MaHS,HoTen,Lop,MaDe,Matkhau">${esc(D.roster)}</textarea><p><button onclick="refresh()">Làm mới dữ liệu từ Server</button> <button class="p" onclick="syncSheetReport()">Đồng bộ KET_QUA_MAU ra Sheets</button></p></div>
-    <div class="c"><div class="tw"><table><tr><th>Mã HS</th><th>Họ tên</th><th>Lớp</th><th>Mã đề</th><th>Điểm</th><th>Trạng thái</th></tr>${R.map(r=>{const s=D.subs?.[r.sbd],g=s&&s.done?(s.g||{p:0}):null;return `<tr><td>${esc(r.sbd)}</td><td>${esc(r.ten)}</td><td>${esc(r.lop)}</td><td>${r.made||(s?s.code:'')}</td><td>${g?g.p.toFixed(2):''}</td><td>${s?(s.done?'Đã nộp':'Đang thi'):'Vắng'}</td></tr>`}).join('')}</table></div></div>`;}
+    <div class="c"><div class="tw"><table><tr><th>Mã HS</th><th>Họ tên</th><th>Lớp</th><th>Mã đề</th><th>Điểm</th><th>Trạng thái</th></tr>${R.map(r=>{const s=D.subs?.[r.sbd],g=s&&s.done?(s.g||{p:0}):null;return `<tr><td>${esc(r.sbd)}</td><td>${esc(r.ten)}</td><td>${esc(r.lop)}</td><td>${r.made||(s?s.code:'')}</td><td>${g?g.p.toFixed(2):''}</td><td>${s?(s.done?'Đã nộp':'Đang thi'):'Vắng'}</td></tr>`}.join('')}</table></div></div>`;}
     
     if(tab==='gc') h+=gcTab();
 
@@ -527,6 +527,7 @@ function parseTextToBank(txt){
         return;
       }
 
+      // Tự động nhận diện dòng bắt đầu bằng A., B., C., D.
       let optMatch = l.match(/^([A-D])[\.\)]\s*(.*)/);
       if(optMatch){
         let k = optMatch[1].toUpperCase();
@@ -534,8 +535,9 @@ function parseTextToBank(txt){
         return;
       }
 
+      // Hỗ trợ trường hợp các đáp án A, B, C, D nằm chung trên một dòng
       let multiOpt = l.match(/([A-D])\.\s*([^A-D\n]+)/g);
-      if(multiOpt && multiOpt.length >= 2){
+      if(multiOpt && multiOpt.length >= 1){
         multiOpt.forEach(o=>{
           let k = o[0].toUpperCase();
           let val = o.slice(2).trim();
@@ -659,7 +661,7 @@ function ans(v, keep){ S.ans[S.qi] = v; push(); if(!keep) exam(); }
 function tf(k, v){ const a = (S.ans[S.qi] || [null,null,null,null]).slice(); a[k] = v; S.ans[S.qi] = a; push(); exam(); }
 
 function tick(){const r=Math.max(0,Math.round(((S.endAt||S.start+D.cfg.min*60000)-(Date.now()+(S.off||0)))/1000)),e=$('#tm');if(e)e.textContent=Math.floor(r/60)+':'+String(r%60).padStart(2,'0');if(r<=0&&!S.fin)fin()}
-function submit(){if(confirm('Nộp bài thi môn '+currentSub+'?'))fin()}
+function submit(){if(confirm('Nộp bài thi '+currentSub+'?'))fin()}
 async function fin(){if(S.fin)return;S.fin=1;clearInterval(T);
  const r=await api('submit',{sbd:S.sbd,subject:currentSub,token:S.token,ans:S.ans,viol:S.viol});
  if(!r.ok){S.fin=0;alert(r.err);return}
