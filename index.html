@@ -28,9 +28,19 @@ pre{white-space:pre-wrap;margin:0;font:inherit}
 #tm{font:700 1.2rem ui-monospace,monospace;padding:3px 10px;border-radius:99px;background:var(--ps);color:var(--pr)}
 .al{background:var(--ws);color:var(--wa);border-radius:8px;padding:8px 10px;margin-bottom:10px}
 .sub-bar{background:var(--ps);padding:6px 12px;border-radius:8px;display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.fx{border:1px solid var(--bd);border-radius:10px;padding:8px;margin:10px 0 0;background:var(--bg)}
+.fxt,.fxb{display:flex;gap:5px;flex-wrap:wrap}.fxt{margin-bottom:6px}.fxt button{padding:4px 10px;font-size:.85rem}.fxb button{min-width:38px;padding:4px 8px}
+.pv{border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;min-height:44px;white-space:pre-wrap;margin:4px 0 10px}.pv:empty::before{content:"Công thức sẽ hiện ở đây khi em gõ";color:var(--mu)}
+.pp{border-top:1px solid var(--bd);margin-top:12px;padding-top:10px}.pw{white-space:pre-wrap}
+.th{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.tb{position:relative}.tb img{height:96px;border:1px solid var(--bd);border-radius:6px;cursor:zoom-in;background:#fff;display:block;min-width:60px}.tb button{position:absolute;top:2px;right:2px;padding:0 6px;border-radius:99px;line-height:1.4}
+.fbtn{display:inline-block;cursor:pointer;border:1px solid var(--bd);background:var(--cd);border-radius:9px;padding:7px 12px}.fbtn.p{background:var(--pr);border-color:var(--pr);color:#fff}
+.mdl{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:50;display:flex;align-items:center;justify-content:center;padding:12px}.mdc{background:var(--cd);border-radius:12px;padding:16px;width:min(680px,100%)}
+.bar{display:inline-block;width:110px;height:8px;background:var(--bd);border-radius:9px;vertical-align:middle}.bar i{display:block;height:100%;background:var(--ok);border-radius:9px}
+h3{font-size:.98rem;margin:14px 0 6px}
 </style><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/mhchem.min.js"></script>
 </head><body>
 <div class="nav">
   <b>🎯 Hệ thống thi ĐGNL Đa Môn</b>
@@ -118,21 +128,21 @@ async function pub(){
   if(!D.cfg.codes.length){alert('Chưa sinh mã đề.');return}
   const codes=D.cfg.codes.map(c=>({...c,qs:c.qs.map(normKey)}));
   const used=new Set([...JSON.stringify(codes).matchAll(/⟪IMG:(\w+)⟫/g)].map(m=>m[1])),imgs={};used.forEach(id=>{if(D.imgs[id]) imgs[id]=D.imgs[id]});
-  const r=await api('publish',{key:AK(),cfg:D.cfg,codes,roster:D.roster,gcfg:{emax:D.cfg.emax,thr:D.cfg.thr,gr:D.gr},imgs});
+  const r=await api('publish',{key:AK(),cfg:D.cfg,codes,roster:D.roster,gcfg:{emax:D.cfg.emax,thr:D.cfg.thr,gr:D.gr,fb:D.cfg.fb||'off'},imgs});
   alert(r.ok?`Đăng thành công môn ${currentSub} (${r.n} mã đề, ${r.hs} thí sinh)!`:r.err);
 }
 
 async function refresh(){
   const r=await api('stats',{key:AK()});
   if(!r.ok){alert(r.err);return}
-  D.subs=r.subs;
+  D.subs=r.subs;if(r.fb)D.cfg.fb=r.fb;
   if(r.gr) D.gr = r.gr;
   show();
 }
 function go2(t){tab=t;if(t==='gs'&&API_URL)refresh();else if(t==='gc')gcLoad();else show()}
 
 let _t;
-function push(){if(!API_URL||!S||S.done||mode!=='hs')return;clearTimeout(_t);_t=setTimeout(()=>{if(!S||S.done)return;api('save',{sbd:S.sbd,subject:currentSub,token:S.token,ans:S.ans,viol:S.viol,qi:S.qi})},2500)}
+function push(){if(!API_URL||!S||S.done||mode!=='hs')return;clearTimeout(_t);_t=setTimeout(()=>{if(!S||S.done)return;api('save',{sbd:S.sbd,subject:currentSub,token:S.token,ans:S.ans,viol:S.viol,qi:S.qi}).then(r=>{if(r&&r.files&&S&&JSON.stringify(r.files)!==JSON.stringify(S.files||{})){S.files=r.files;paperRefresh(S.qi)}})},2500)}
 
 async function enter(){
   const sbd=$('#sb').value.trim(), pass=$('#sp').value.trim();
@@ -140,7 +150,7 @@ async function enter(){
   const r=await api('login',{sbd,pass,subject:currentSub});
   if(!r.ok){alert(r.err);return}
   D.imgs=Object.assign(D.imgs||{},r.imgs||{});
-  S={sbd,name:r.name,code:r.code,cd:r.cd,ans:r.ans||{},flag:{},viol:r.viol||0,start:r.start,endAt:r.endAt,off:r.now-Date.now(),done:r.done,qi:r.qi||0,token:r.token,g:r.g,title:r.title};
+  S={sbd,name:r.name,code:r.code,cd:r.cd,ans:r.ans||{},flag:{},viol:r.viol||0,start:r.start,endAt:r.endAt,off:r.now-Date.now(),done:r.done,qi:r.qi||0,token:r.token,g:r.g,title:r.title,files:r.files||{}};
   S.done?result():exam();
 }
 
@@ -155,13 +165,14 @@ async function gcLoad(){
   D.gr = r.gr || [];
   D.cfg.emax = r.emax ?? D.cfg.emax;
   D.cfg.thr = r.thr ?? D.cfg.thr;
+  if(r.fb) D.cfg.fb = r.fb;
   OV = (await rpcG('g_over', {key: AK()})).rows || [];
   show();
 }
 
 async function setV3(sbd,no,v){const r=await rpcG('g_final',{key:AK(),sbd,no,score:+v});if(!r.ok)alert(r.err);gcLoad()}
 async function gcfgSave(){
-  const r=await api('g_cfg',{key:AK(),gcfg:{emax:D.cfg.emax,thr:D.cfg.thr,gr:D.gr}});
+  const r=await api('g_cfg',{key:AK(),gcfg:{emax:D.cfg.emax,thr:D.cfg.thr,gr:D.gr,fb:D.cfg.fb||'off'}});
   alert(r.ok?'Lưu cấu hình chấm thành công.':r.err);
 }
 
@@ -215,9 +226,10 @@ async function gvReload(){const l=await rpcG('g_list',{user:GV.user,pin:GV.pin})
 function gvMain(){
  const T=GV.tasks,t=T[GV.i],dn=T.filter(x=>x.items.every(i=>i.mine)).length,hd=`<div class="c" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div style="flex:1"><b>${esc(GV.name)}</b> · Vòng ${GV.round} (Môn ${currentSub})<div class="sm mu">Lớp phụ trách: ${esc(GV.classes)} · Đã chấm ${dn}/${T.length} bài</div></div><button onclick="gvReload()">Tải lại</button><button onclick="GV=null;gvView()">Thoát</button></div>`;
  if(!t){$('#app').innerHTML=hd+'<div class="c mu">Chưa có bài tự luận nào được nộp thuộc lớp bạn phụ trách.</div>';return}
- $('#app').innerHTML=hd+`<div class="ex"><div>${t.items.map((it,k)=>`<div class="c"><div class="sm mu">Bài ${GV.i+1} · Câu tự luận số ${it.no}</div><p style="white-space:pre-wrap"><b>${ER(it.stem)}</b></p><details><summary class="sm">Hướng dẫn chấm</summary><pre class="sm">${esc(it.sol||'(chưa có)')}</pre></details><div class="al" style="background:var(--bg);color:var(--tx)"><pre>${esc(it.ans||'(thí sinh bỏ trống)')}</pre></div><div class="tr"><span>Điểm (0 đến ${GV.emax}):</span><input id="sc${k}" type="number" min="0" max="${GV.emax}" step="0.25" value="${it.mine?it.mine.score:''}" style="width:90px"></div><input id="nt${k}" placeholder="Nhận xét (không bắt buộc)" value="${esc(it.mine?it.mine.note||'':'')}" style="width:100%;margin-top:6px"></div>`).join('')}
+ $('#app').innerHTML=hd+`<div class="ex"><div>${t.items.map((it,k)=>`<div class="c"><div class="sm mu">Bài ${GV.i+1} · Câu tự luận số ${it.no}</div><p style="white-space:pre-wrap"><b>${ER(it.stem)}</b></p><details><summary class="sm">Hướng dẫn chấm</summary><div class="sm pw">${esc(it.sol||'(chưa có)')}</div></details><div class="al" style="background:var(--bg);color:var(--tx)"><div class="pw">${esc(it.ans||'(thí sinh bỏ trống)')}</div></div>${paperGv(it,k)}<div class="tr"><span>Điểm (0 đến ${GV.emax}):</span><input id="sc${k}" type="number" min="0" max="${GV.emax}" step="0.25" value="${it.mine?it.mine.score:''}" style="width:90px"></div><input id="nt${k}" placeholder="Nhận xét (không bắt buộc)" value="${esc(it.mine?it.mine.note||'':'')}" style="width:100%;margin-top:6px"></div>`).join('')}
  <p><button onclick="GV.i--;gvMain()" ${GV.i?'':'disabled'}>← Bài trước</button> <button class="p" onclick="gvSave()">Lưu và bài sau →</button></p></div>
  <div class="c"><b class="sm">Danh sách bài</b><div class="pl" style="margin-top:8px">${T.map((x,i)=>`<button class="${x.items.every(z=>z.mine)?'d':''} ${i===GV.i?'u':''}" onclick="GV.i=${i};gvMain()">${i+1}</button>`).join('')}</div></div></div>`;
+ hydrateImgs();gvAuto();
 }
 
 async function gvSave(){const t=GV.tasks[GV.i],b=t.items.map((it,k)=>({it,s:$('#sc'+k).value,n:$('#nt'+k).value}));
@@ -381,7 +393,7 @@ function admin(){
     }
     
     if(tab==='gs'){const R=rows(),sb=R.map(r=>D.subs?.[r.sbd]),dt=sb.filter(Boolean);
-    h+=`<div class="c"><h2>Danh sách thí sinh môn ${currentSub}</h2><textarea id="ro" onchange="D.roster=this.value;save();show()" placeholder="MaHS,HoTen,Lop,MaDe,Matkhau">${esc(D.roster)}</textarea><p><button onclick="refresh()">Làm mới dữ liệu từ Server</button> <button class="p" onclick="syncSheetReport()">Đồng bộ KET_QUA_MAU ra Sheets</button></p></div>
+    h+=`<div class="c"><h2>Danh sách thí sinh môn ${currentSub}</h2><textarea id="ro" onchange="D.roster=this.value;save();show()" placeholder="MaHS,HoTen,Lop,MaDe,Matkhau">${esc(D.roster)}</textarea><p><button onclick="refresh()">Làm mới dữ liệu từ Server</button> <button class="p" onclick="syncSheetReport()">Đồng bộ KET_QUA_MAU ra Sheets</button></p></div>${aiPanel()}
     <div class="c"><div class="tw"><table><tr><th>Mã HS</th><th>Họ tên</th><th>Lớp</th><th>Mã đề</th><th>Điểm</th><th>Trạng thái</th></tr>${R.map(r=>{const s=D.subs?.[r.sbd],g=s&&s.done?(s.g||{p:0}):null;return `<tr><td>${esc(r.sbd)}</td><td>${esc(r.ten)}</td><td>${esc(r.lop)}</td><td>${r.made||(s?s.code:'')}</td><td>${g?g.p.toFixed(2):''}</td><td>${s?(s.done?'Đã nộp':'Đang thi'):'Vắng'}</td></tr>`}).join('')}</table></div></div>`;}
     
     if(tab==='gc') h+=gcTab();
@@ -397,6 +409,397 @@ function rows(){
     const p=l.split(',').map(x=>x.trim());
     return {sbd:p[0],ten:p[1],lop:p[2],made:p[3],pass:p[4]};
   }).filter(r=>r.sbd);
+}
+
+// ===================== v5.0: SOẠN CÔNG THỨC · BÀI LÀM GIẤY · AI =====================
+const MAXF=4, IMGC={};
+
+// ---- Thanh công thức theo môn. Cú pháp: "nhãn => đoạn chèn"; ‸ = vị trí con trỏ; tiền tố ! = chèn chữ thường (không bọc $) ----
+const FXTXT=String.raw`
+#*
+@Cơ bản
+$\frac{a}{b}$ => \dfrac{‸}{}
+$\sqrt{x}$ => \sqrt{‸}
+$\sqrt[n]{x}$ => \sqrt[‸]{}
+$x^{n}$ => ^{‸}
+$x_{n}$ => _{‸}
+$\left(\ \right)$ => \left(‸\right)
+$\pm$ => \pm
+$\times$ => \times
+$\cdot$ => \cdot
+$\approx$ => \approx
+$\to$ => \to
+$\%$ => \%
+$10^{n}$ => 10^{‸}
+$\times 10^{n}$ => \times 10^{‸}
+@Hy Lạp
+$\alpha$ => \alpha
+$\beta$ => \beta
+$\gamma$ => \gamma
+$\delta$ => \delta
+$\varepsilon$ => \varepsilon
+$\theta$ => \theta
+$\lambda$ => \lambda
+$\mu$ => \mu
+$\pi$ => \pi
+$\rho$ => \rho
+$\sigma$ => \sigma
+$\tau$ => \tau
+$\varphi$ => \varphi
+$\omega$ => \omega
+$\Delta$ => \Delta
+$\Omega$ => \Omega
+#Toan
++Cơ bản
+@Hàm số & giải tích
+$|x|$ => \left|‸\right|
+$\log_{a}$ => \log_{‸}
+$\ln$ => \ln
+$\sin$ => \sin
+$\cos$ => \cos
+$\tan$ => \tan
+$\int_{a}^{b}$ => \int_{‸}^{}
+$\lim_{x\to a}$ => \lim_{x\to ‸}
+$\sum_{i=1}^{n}$ => \sum_{i=1}^{‸}
+$f'(x)$ => f'(x)
+$\frac{dy}{dx}$ => \dfrac{d‸}{dx}
+$\infty$ => \infty
+Hệ phương trình => \begin{cases} ‸ \\ \end{cases}
+Ma trận 2×2 => \begin{pmatrix} ‸ & \\ & \end{pmatrix}
+@Hình học & vectơ
+$\overrightarrow{AB}$ => \overrightarrow{‸}
+$\vec{u}$ => \vec{‸}
+$\vec{u}\cdot\vec{v}$ => \vec{‸}\cdot\vec{}
+$\widehat{ABC}$ => \widehat{‸}
+$^\circ$ => ^\circ
+$\perp$ => \perp
+$\parallel$ => \parallel
+$\triangle$ => \triangle
+$\angle$ => \angle
+$\Rightarrow$ => \Rightarrow
+$\Leftrightarrow$ => \Leftrightarrow
+@Xác suất & tổ hợp
+$P(A)$ => P(‸)
+$P(A\mid B)$ => P(‸\mid )
+$\overline{A}$ => \overline{‸}
+$C_{n}^{k}$ => C_{‸}^{}
+$A_{n}^{k}$ => A_{‸}^{}
+$\binom{n}{k}$ => \binom{‸}{}
+$n!$ => ‸!
+$\bar{x}$ => \bar{‸}
+$\cap$ => \cap
+$\cup$ => \cup
+@Quan hệ & tập hợp
+$\le$ => \le
+$\ge$ => \ge
+$\ne$ => \ne
+$\in$ => \in
+$\notin$ => \notin
+$\subset$ => \subset
+$\emptyset$ => \emptyset
+$\mathbb{R}$ => \mathbb{R}
+$\forall$ => \forall
+$\exists$ => \exists
++Hy Lạp
+#Ly
++Cơ bản
+@Đại lượng & ký hiệu
+$\vec{F}$ => \vec{‸}
+$\vec{E}$ => \vec{E}
+$\vec{B}$ => \vec{B}
+$\Delta t$ => \Delta ‸
+$\varepsilon_{0}$ => \varepsilon_{0}
+$\mu_{0}$ => \mu_{0}
+$\sin$ => \sin
+$\cos$ => \cos
+$\le$ => \le
+$\ge$ => \ge
+$\Rightarrow$ => \Rightarrow
+@Đơn vị
+$\mathrm{m}$ => \,\mathrm{m}
+$\mathrm{s}$ => \,\mathrm{s}
+$\mathrm{m/s}$ => \,\mathrm{m/s}
+$\mathrm{m/s^{2}}$ => \,\mathrm{m/s^{2}}
+$\mathrm{kg}$ => \,\mathrm{kg}
+$\mathrm{N}$ => \,\mathrm{N}
+$\mathrm{J}$ => \,\mathrm{J}
+$\mathrm{W}$ => \,\mathrm{W}
+$\mathrm{Hz}$ => \,\mathrm{Hz}
+$\mathrm{V}$ => \,\mathrm{V}
+$\mathrm{A}$ => \,\mathrm{A}
+$\Omega$ => \,\Omega
+$\mathrm{C}$ => \,\mathrm{C}
+$\mathrm{F}$ => \,\mathrm{F}
+$\mathrm{T}$ => \,\mathrm{T}
+$\mathrm{Wb}$ => \,\mathrm{Wb}
+$^\circ\mathrm{C}$ => \,^\circ\mathrm{C}
+$\mathrm{K}$ => \,\mathrm{K}
+@Hy Lạp
++Hy Lạp
+#Hoa
+@Công thức & phản ứng
+$\ce{H2O}$ => \ce{‸}
+$\ce{A + B}$ => \ce{‸ + }
+$\ce{->}$ => \ce{->}
+$\ce{<=>}$ => \ce{<=>}
+$\xrightarrow{t^\circ}$ => \xrightarrow{t^\circ}
+$\xrightarrow{\text{xt}}$ => \xrightarrow{\text{xt}}
+$\uparrow$ => \uparrow
+$\downarrow$ => \downarrow
+$\ce{SO4^2-}$ => \ce{SO4^2-}
+$\ce{Fe^3+}$ => \ce{Fe^3+}
+$\ce{CH3-CH2-OH}$ => \ce{CH3-CH2-OH}
+$\ce{CH2=CH2}$ => \ce{CH2=CH2}
+$\ce{CH#CH}$ => \ce{CH#CH}
+$\ce{C6H5-OH}$ => \ce{C6H5-OH}
+$[\ce{H+}]$ => [\ce{H+}]
+@Đại lượng & đơn vị
+$n=\dfrac{m}{M}$ => n=\dfrac{m}{M}
+$C_{M}$ => C_{M}
+$C\%$ => C\%
+$\Delta H$ => \Delta H
+$\mathrm{pH}$ => \mathrm{pH}
+$K_{a}$ => K_{a}
+$\mathrm{mol}$ => \,\mathrm{mol}
+$\mathrm{g/mol}$ => \,\mathrm{g/mol}
+$\mathrm{mol/L}$ => \,\mathrm{mol/L}
+$\mathrm{kJ/mol}$ => \,\mathrm{kJ/mol}
+$\mathrm{g}$ => \,\mathrm{g}
+$\mathrm{L}$ => \,\mathrm{L}
+$\mathrm{mL}$ => \,\mathrm{mL}
+$10^{-n}$ => 10^{-‸}
++Cơ bản
+#Sinh
+@Di truyền
+Aa => Aa
+AaBb => AaBb
+$X^{A}X^{a}$ => X^{A}X^{a}
+$X^{a}Y$ => X^{a}Y
+♂ => !♂
+♀ => !♀
+$F_{1}$ => F_{1}
+$F_{2}$ => F_{2}
+$\times$ => \times
+$\to$ => \to
+$\dfrac{a}{b}$ => \dfrac{‸}{}
+$\%$ => \%
+$\approx$ => \approx
+@Sinh thái & chuyển hóa
+$\dfrac{a}{b}\times 100\%$ => \dfrac{‸}{}\times 100\%
+$\ce{CO2}$ => \ce{CO2}
+$\ce{O2}$ => \ce{O2}
+$\ce{H2O}$ => \ce{H2O}
+$\ce{C6H12O6}$ => \ce{C6H12O6}
+$\mathrm{ATP}$ => \mathrm{ATP}
+$\mathrm{NADPH}$ => \mathrm{NADPH}
+$\Delta$ => \Delta
+$\bar{x}$ => \bar{‸}
+$\pm$ => \pm
+$10^{n}$ => 10^{‸}
+`;
+const FXG=(()=>{const G={},sh={};let sub=null,grp=null;
+  FXTXT.split('\n').forEach(l=>{l=l.trim();if(!l)return;
+    if(l[0]==='#'){sub=l.slice(1).trim();if(sub!=='*')G[sub]=G[sub]||{};return}
+    if(l[0]==='@'){grp=l.slice(1).trim();(sub==='*'?sh:G[sub])[grp]=[];return}
+    if(l[0]==='+'){G[sub][l.slice(1).trim()]=sh[l.slice(1).trim()];return}
+    const i=l.indexOf(' => ');if(i<0)return;
+    let sn=l.slice(i+4).trim();if(/^\\[a-zA-Z]+$/.test(sn))sn+=' ';
+    (sub==='*'?sh:G[sub])[grp].push([l.slice(0,i).trim(),sn]);
+  });return G})();
+let FXT={};
+
+function fxBar(){
+  const G=FXG[currentSub]||{},names=Object.keys(G);let gi=FXT[currentSub]||0;if(gi>=names.length)gi=0;
+  return `<div class="fxt">${names.map((n,i)=>`<button type="button" class="${i===gi?'on':''}" onclick="fxTab(${i})">${esc(n)}</button>`).join('')}<button type="button" class="p" onclick="mfOpen()">∑ Soạn công thức trực quan</button></div><div class="fxb">${(G[names[gi]]||[]).map((it,i)=>`<button type="button" title="${esc(it[1].replace('‸','').trim())}" onclick="fxIns(${gi},${i})">${esc(it[0])}</button>`).join('')}</div>`;
+}
+function fxTab(i){FXT[currentSub]=i;const b=$('#fxBar');if(b)b.innerHTML=fxBar()}
+function fxIns(gi,i){const G=FXG[currentSub],it=G[Object.keys(G)[gi]][i];if(it)fxInsRaw(it[1])}
+// Chèn vào vị trí con trỏ; tự bọc $...$ nếu con trỏ đang ở ngoài công thức; gộp với công thức liền kề
+function fxInsRaw(sn){
+  const t=$('#esTxt');if(!t||!sn)return;
+  const st=t.selectionStart==null?t.value.length:t.selectionStart,en=t.selectionEnd==null?st:t.selectionEnd;
+  let before=t.value.slice(0,st);const sel=t.value.slice(st,en),after=t.value.slice(en);
+  const raw=sn[0]==='!';if(raw)sn=sn.slice(1);
+  const inside=((before.replace(/\\\$/g,'').match(/\$/g)||[]).length%2)===1;
+  let pos=sn.indexOf('‸');const hasM=pos>=0;let body=hasM?sn.replace('‸',''):sn;if(!hasM)pos=body.length;
+  if(hasM&&sel){body=body.slice(0,pos)+sel+body.slice(pos);pos+=sel.length}
+  let open='$',close='$';
+  if(raw||inside){open='';close=''}
+  else if(before.endsWith('$')&&!before.endsWith('\\$')){before=before.slice(0,-1);open=''}   // $a$ + $b$ -> $ab$
+  t.value=before+open+body+close+after;
+  const c=before.length+open.length+pos;t.focus();t.setSelectionRange(c,c);esInput(t.value);
+}
+let _pv;
+function esInput(v){ans(v,1);clearTimeout(_pv);_pv=setTimeout(pvUpdate,120)}
+function pvUpdate(){const e=$('#esPv');if(e&&S)e.textContent=S.ans[S.qi]||''}   // MutationObserver sẽ render KaTeX
+
+// ---- Soạn công thức trực quan (MathLive, tải khi cần) ----
+async function mfOpen(){
+  if($('#mfM'))return;
+  const m=document.createElement('div');m.className='mdl';m.id='mfM';
+  m.innerHTML=`<div class="mdc"><b>Soạn công thức</b><p class="sm mu">Gõ trực tiếp hoặc bấm biểu tượng bàn phím ⌨ ở bên phải ô để dùng bàn phím công thức. Công thức hóa học: dùng thẻ "Công thức &amp; phản ứng" (<code>\\ce{H2SO4}</code>).</p><math-field id="mfF" style="width:100%;font-size:1.5rem;padding:8px;border:1px solid var(--bd);border-radius:8px"></math-field><p id="mfE" class="sm" style="color:var(--er)"></p><p><button class="p" onclick="mfOk()">Chèn vào bài làm</button> <button onclick="mfX()">Hủy</button></p></div>`;
+  document.body.appendChild(m);
+  try{if(!customElements.get('math-field'))await import('https://esm.run/mathlive');const f=$('#mfF');if(f&&f.focus)setTimeout(()=>f.focus(),150)}
+  catch(e){const x=$('#mfE');if(x)x.textContent='Không tải được trình soạn công thức (mạng chậm?). Em vẫn có thể dùng các nút trên thanh công cụ hoặc gõ LaTeX trong dấu $...$.'}
+}
+function mfX(){const m=$('#mfM');if(m)m.remove()}
+function mfOk(){const f=$('#mfF');let v=f&&f.value?String(f.value):'';mfX();v=v.replace(/\\placeholder(\[[^\]]*\])?\{[^}]*\}/g,'').trim();if(v)fxInsRaw(v)}
+
+// ---- Ô trả lời tự luận: thanh công thức + xem trước + ảnh bài làm trên giấy ----
+function essayBox(a){
+  const fx=!!FXG[currentSub];
+  return `<div class="es">${fx?`<div class="fx" id="fxBar" onmousedown="if(event.target.closest('button'))event.preventDefault()">${fxBar()}</div>`:''}
+  <textarea id="esTxt" style="min-height:160px;margin-top:6px" oninput="esInput(this.value)" placeholder="Trình bày chi tiết lời giải tự luận...${fx?' (công thức đặt trong dấu $...$ hoặc bấm nút trên thanh công cụ)':''}">${esc(a||'')}</textarea>
+  ${fx?'<div class="sm mu" style="margin-top:6px">Xem trước:</div><div class="pv" id="esPv"></div>':''}
+  <div class="pp" id="ppBox">${paperInner()}</div></div>`;
+}
+function paperInner(){
+  const fl=(S.files&&S.files[S.qi])||[];
+  return `<div class="sm"><b>📷 Làm bài trên giấy?</b> Viết bài giải ra giấy (ghi rõ số câu, họ tên ở đầu trang), chụp ảnh rồi tải lên. Tối đa ${MAXF} ảnh cho mỗi câu, có thể kết hợp với phần gõ ở trên.</div>
+  <div class="th">${fl.map(id=>`<div class="tb"><img data-fid="${id}" ${IMGC[id]?`src="${IMGC[id]}"`:''} alt="Ảnh bài làm" onclick="zoomImg(this)"><button type="button" title="Xóa ảnh" onclick="delFile('${id}')">✕</button></div>`).join('')}</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+    <label class="fbtn p" onclick="pickStart()"><input type="file" accept="image/*" capture="environment" hidden onchange="upFiles(this)">📷 Chụp ảnh</label>
+    <label class="fbtn" onclick="pickStart()"><input type="file" accept="image/*" multiple hidden onchange="upFiles(this)">🖼 Chọn ảnh từ máy</label>
+  </div><div id="upSt" class="sm mu" style="margin-top:4px"></div>
+  <div class="sm mu">Mẹo: chụp thẳng, đủ sáng, chữ rõ nét, không bị cắt mép; mỗi trang một ảnh theo đúng thứ tự.</div>`;
+}
+function pickStart(){window._pickUntil=Date.now()+120000}   // mở camera/thư viện làm trang bị ẩn: không tính là vi phạm
+function upSt(t){const e=$('#upSt');if(e)e.textContent=t}
+function compressImg(file,max=1800,q=.75){
+  return new Promise((ok,no)=>{
+    const u=URL.createObjectURL(file),im=new Image();
+    im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),w=Math.round(im.width*k),h=Math.round(im.height*k),c=document.createElement('canvas');
+      c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',q))};
+    im.onerror=()=>{URL.revokeObjectURL(u);no(new Error('Không đọc được ảnh (định dạng không hỗ trợ?)'))};
+    im.src=u;
+  });
+}
+function paperRefresh(idx){if(S&&S.qi===idx){const b=$('#ppBox');if(b){b.innerHTML=paperInner();hydrateImgs()}}}
+async function upFiles(inp){
+  const fs=[...inp.files];inp.value='';window._pickUntil=Date.now()+3000;
+  if(!fs.length||!S)return;const idx=S.qi;
+  for(const f of fs){
+    if(((S.files||{})[idx]||[]).length>=MAXF){alert(`Tối đa ${MAXF} ảnh cho mỗi câu.`);break}
+    try{
+      upSt('Đang xử lý ảnh...');const data=await compressImg(f);
+      upSt('Đang tải lên...');const r=await api('up_img',{sbd:S.sbd,subject:currentSub,token:S.token,idx,data});
+      if(!r.ok){alert(r.err||'Tải ảnh thất bại, hãy thử lại.');break}
+      IMGC[r.id]=data;S.files=r.files;paperRefresh(idx);
+    }catch(e){alert(e.message);break}
+  }
+  upSt('');paperRefresh(idx);
+}
+async function delFile(id){
+  if(!confirm('Xóa ảnh này?'))return;const idx=S.qi;
+  const r=await api('del_img',{sbd:S.sbd,subject:currentSub,token:S.token,idx,id});
+  if(!r.ok){alert(r.err);return}S.files=r.files;paperRefresh(idx);
+}
+// Tải ảnh (dạng data URL) theo quyền của người đang dùng: thí sinh / giám khảo / quản trị
+async function hydrateImgs(){
+  const els=[...document.querySelectorAll('img[data-fid]:not([src])')];
+  await Promise.all(els.map(async el=>{
+    const id=el.dataset.fid;
+    if(!IMGC[id]){
+      const au=mode==='gv'&&GV?{user:GV.user,pin:GV.pin}:mode==='hs'&&S?{sbd:S.sbd,token:S.token}:{key:AK()};
+      const r=await api('get_img',{id,...au});if(r.ok)IMGC[id]=r.data;
+    }
+    if(IMGC[id])el.src=IMGC[id];
+  }));
+}
+function zoomImg(el){
+  const s=el.src;if(!s)return;let rot=0;
+  const m=document.createElement('div');m.className='mdl';m.onclick=()=>m.remove();
+  m.innerHTML=`<div style="text-align:center"><div style="margin-bottom:8px"><button type="button">⟳ Xoay</button> <button type="button">✕ Đóng</button></div><img src="${s}" style="max-width:96vw;max-height:84vh;background:#fff;transition:transform .2s"></div>`;
+  const [b1]=m.querySelectorAll('button'),im=m.querySelector('img');
+  b1.onclick=e=>{e.stopPropagation();rot=(rot+90)%360;im.style.transform=`rotate(${rot}deg)`};
+  im.onclick=e=>e.stopPropagation();document.body.appendChild(m);
+}
+
+// ---- Giám khảo: ảnh + bản AI chép lại ----
+function paperGv(it,k){
+  const fl=it.files||[];if(!fl.length)return '';
+  return `<div class="th">${fl.map(id=>`<div class="tb"><img data-fid="${id}" ${IMGC[id]?`src="${IMGC[id]}"`:''} alt="Ảnh bài làm" onclick="zoomImg(this)"></div>`).join('')}</div><div id="ocr${k}" style="margin-top:8px">${ocrHTML(it,k)}</div>`;
+}
+function ocrHTML(it,k){
+  const o=it.ocr;
+  if(it._busy)return '<div class="sm mu">🤖 AI đang đọc bài làm trên giấy (khoảng 10–40 giây)...</div>';
+  if(!o)return `<div class="sm mu">🤖 Chưa có bản AI đọc. <button type="button" onclick="gvOcr(${k})">AI đọc bài giấy</button> ${it._err?`<span style="color:var(--er)">${esc(it._err)}</span>`:''}</div>`;
+  return `<div class="al" style="background:var(--bg);color:var(--tx)"><div class="sm"><b>🤖 AI chép lại bài làm trên giấy</b> <span class="mu">(đối chiếu với ảnh, có thể sai sót)</span> <button type="button" onclick="gvOcr(${k},1)">Đọc lại</button></div><div class="pw" style="margin-top:6px">${esc(o.text)}</div>${(o.flags&&o.flags.length)?`<div class="sm" style="color:var(--er)">⚠ ${o.flags.map(x=>esc(x)).join('; ')}</div>`:''}<details style="margin-top:6px"><summary class="sm">Gợi ý chấm của AI (chỉ tham khảo, nên tự chấm trước khi xem)</summary><div class="sm pw">Điểm gợi ý: <b>${o.sug==null?'—':o.sug}</b> / ${GV?GV.emax:''}\n${esc(o.comment||'')}</div></details></div>`;
+}
+function ocrRefresh(t,k){if(GV&&GV.tasks[GV.i]===t){const e=$('#ocr'+k);if(e)e.innerHTML=ocrHTML(t.items[k],k)}}
+async function ocrRun(t,k,force){
+  const it=t.items[k];it._busy=1;it._err='';ocrRefresh(t,k);
+  const r=await rpcG('ai_ocr',{user:GV.user,pin:GV.pin,sbd:t.id,idx:it.idx,force:force?1:0});
+  it._busy=0;if(r.ok)it.ocr=r.ocr;else it._err=r.err||'Lỗi';ocrRefresh(t,k);
+}
+function gvOcr(k,force){ocrRun(GV.tasks[GV.i],k,force)}
+async function gvAuto(){   // tự động nhờ AI đọc các bài giấy chưa có bản chép
+  const t=GV&&GV.tasks[GV.i];if(!t)return;
+  for(let k=0;k<t.items.length;k++){const it=t.items[k];if(it.files&&it.files.length&&!it.ocr&&!it._tried){it._tried=1;await ocrRun(t,k)}}
+}
+
+// ---- Học sinh: báo cáo phân tích AI sau thi ----
+async function fbLoad(){
+  const box=$('#fbBox');if(!box||!S)return;
+  box.innerHTML='<div class="mu sm">Đang tải báo cáo...</div>';
+  const r=await api('fb_get',{sbd:S.sbd,subject:currentSub,token:S.token});
+  if(!$('#fbBox'))return;
+  if(!r.ok){box.innerHTML=`<div class="mu sm">${esc(r.err||'Không tải được báo cáo')}</div>`;return}
+  if(!r.open){box.innerHTML='<h2>🧠 Phân tích &amp; hướng dẫn từ AI</h2><p class="mu sm">Báo cáo sẽ được mở sau khi nhà trường hoàn tất kỳ thi và chấm bài. Em đăng nhập lại sau để xem nhé.</p>';return}
+  if(r.fb){fbShow(r.fb);return}
+  box.innerHTML='<h2>🧠 Phân tích &amp; hướng dẫn từ AI</h2><p class="mu sm">AI sẽ phân tích bài làm của em theo từng chủ đề, chỉ ra chỗ chưa tốt và hướng dẫn cách ôn tập (mất khoảng 20–60 giây).</p><button class="p" id="fbGo" onclick="fbGen()">Tạo phân tích cho bài thi của em</button>';
+}
+async function fbGen(){
+  const box=$('#fbBox');if(!box||!S)return;
+  box.innerHTML='<h2>🧠 Phân tích &amp; hướng dẫn từ AI</h2><p class="mu">⏳ AI đang đọc bài làm của em, vui lòng đợi và không đóng trang...</p>';
+  const r=await api('fb_gen',{sbd:S.sbd,subject:currentSub,token:S.token});
+  if(!$('#fbBox'))return;
+  if(!r.ok){box.innerHTML=`<h2>🧠 Phân tích &amp; hướng dẫn từ AI</h2><p style="color:var(--er)">${esc(r.err||'Lỗi')}</p><p class="sm mu">Nếu nhiều bạn cùng xem một lúc, hệ thống có thể bận. Em thử lại sau ít phút.</p><button class="p" onclick="fbGen()">Thử lại</button>`;return}
+  fbShow(r.fb);
+}
+function fbShow(f){
+  const box=$('#fbBox');if(!box)return;
+  const a=f.ai||{},st=f.stats||{},L=x=>(Array.isArray(x)?x:[]).map(s=>`<li class="pw">${esc(typeof s==='string'?s:JSON.stringify(s))}</li>`).join('');
+  box.innerHTML=`<h2>🧠 Phân tích &amp; hướng dẫn từ AI</h2>
+  <div class="tw"><table><tr><th>Chủ đề</th><th>Điểm đạt</th><th>Tỉ lệ</th></tr>${(st.topics||[]).map(t=>{const pc=t.total?Math.round(t.got/t.total*100):0;return `<tr><td>${esc(t.tag)}</td><td>${+Number(t.got).toFixed(2)}/${t.total}</td><td><span class="bar"><i style="width:${pc}%"></i></span> ${pc}%</td></tr>`}).join('')}</table></div>
+  ${(st.essays&&st.essays.length)?`<p class="sm">Tự luận: ${st.essays.map(e=>`Câu ${e.no}: ${e.score==null?'chưa có điểm chính thức':(+Number(e.score).toFixed(2))+'/'+e.emax}`).join(' · ')}</p>`:''}
+  <h3>Tổng quan</h3><div class="pw">${esc(a.tong_quan||'')}</div>
+  ${(a.diem_manh&&a.diem_manh.length)?`<h3>Điểm mạnh</h3><ul>${L(a.diem_manh)}</ul>`:''}
+  ${(a.can_cai_thien&&a.can_cai_thien.length)?`<h3>Cần cải thiện</h3>${a.can_cai_thien.map(x=>`<div class="c" style="margin:6px 0"><b>${esc(x.chu_de||'')}</b><div class="pw sm">${esc(x.nhan_xet||'')}</div><div class="pw sm" style="color:var(--ok)">➜ ${esc(x.cach_khac_phuc||'')}</div></div>`).join('')}`:''}
+  ${(a.phan_tich_cau&&a.phan_tich_cau.length)?`<h3>Phân tích từng câu</h3>${a.phan_tich_cau.map(x=>`<div class="c" style="margin:6px 0"><b>Câu ${esc(x.so_cau)}</b><div class="pw sm">${esc(x.nhan_xet||'')}</div>${x.huong_dan?`<div class="pw sm" style="color:var(--ok)">Hướng dẫn: ${esc(x.huong_dan)}</div>`:''}</div>`).join('')}`:''}
+  ${(a.ke_hoach&&a.ke_hoach.length)?`<h3>Kế hoạch ôn tập</h3><ol>${L(a.ke_hoach)}</ol>`:''}
+  <p class="sm mu">Báo cáo do AI tạo, chỉ mang tính tham khảo; điểm chính thức do nhà trường công bố.</p>`;
+}
+
+// ---- Quản trị: bật/tắt báo cáo AI, chạy hàng loạt ----
+function aiPanel(){
+  return `<div class="c"><h2>🤖 AI: đọc bài làm giấy &amp; phân tích sau thi (môn ${currentSub})</h2>
+  <p class="sm mu">Cần đặt <code>AI_API_KEY</code> trong Script Properties. Nên chạy sau khi giám khảo chấm xong để báo cáo có điểm tự luận.</p>
+  <p><label class="sm"><input type="checkbox" ${D.cfg.fb==='on'?'checked':''} onchange="aiFbToggle(this.checked)"> Mở báo cáo phân tích AI cho học sinh</label></p>
+  <p><button onclick="aiBatch('ocr')">AI đọc tất cả bài làm trên giấy</button> <button onclick="aiBatch('fb')">Tạo phân tích AI cho mọi thí sinh đã nộp</button> <label class="sm"><input type="checkbox" id="aiForce"> Ghi đè bản đã có</label></p><div id="aiSt" class="sm"></div></div>`;
+}
+async function aiFbToggle(on){
+  D.cfg.fb=on?'on':'off';save();
+  const r=await api('ai_cfg',{key:AK(),fb:D.cfg.fb});
+  alert(r.ok?(on?'Đã MỞ báo cáo phân tích cho học sinh.':'Đã ĐÓNG báo cáo phân tích.'):(r.err||'Lỗi'));
+}
+async function aiBatch(kind){
+  if(!D.subs||!Object.keys(D.subs).length){await refresh()}
+  const done=rows().filter(r=>D.subs&&D.subs[r.sbd]&&D.subs[r.sbd].done);
+  if(!done.length){alert('Chưa có thí sinh nào nộp bài. Hãy bấm "Làm mới dữ liệu từ Server" trước.');return}
+  const force=!!($('#aiForce')&&$('#aiForce').checked),jobs=[];
+  done.forEach(r=>{const s=D.subs[r.sbd];
+    if(kind==='ocr')Object.keys(s.files||{}).forEach(i=>{if((s.files[i]||[]).length)jobs.push({sbd:r.sbd,idx:+i,name:r.ten})});
+    else jobs.push({sbd:r.sbd,name:r.ten})});
+  if(!jobs.length){alert(kind==='ocr'?'Không có bài làm trên giấy nào.':'Không có bài nào.');return}
+  if(!confirm(`Sẽ xử lý ${jobs.length} lượt gọi AI${kind==='fb'?' (nên chạy sau khi đã chấm xong tự luận)':''}. Tiếp tục?`))return;
+  const st=$('#aiSt');let ok=0,errs=[];
+  for(let n=0;n<jobs.length;n++){
+    const j=jobs[n];if(st)st.textContent=`Đang xử lý ${n+1}/${jobs.length}: ${j.name}...`;
+    const r=kind==='ocr'?await api('ai_ocr',{key:AK(),sbd:j.sbd,idx:j.idx,force:force?1:0}):await api('fb_gen',{key:AK(),sbd:j.sbd,force:force?1:0});
+    if(r.ok)ok++;else errs.push(`${j.name}: ${r.err||'lỗi'}`);
+  }
+  const s2=$('#aiSt');if(s2)s2.innerHTML=`Hoàn tất: ${ok}/${jobs.length} thành công.`+(errs.length?`<br><span style="color:var(--er)">${errs.slice(0,10).map(esc).join('<br>')}${errs.length>10?'<br>...':''}</span>`:'');
 }
 
 // ===================== NHẬP ĐỀ TỪ WORD (.docx) =====================
@@ -746,13 +1149,11 @@ function exam(){
   if(q.type==='sa') {
     b = `<input value="${esc(a||'')}" placeholder="Nhập câu trả lời ngắn..." oninput="ans(this.value,1)" style="width:100%;max-width:320px;margin-top:10px">`;
   }
-  if(q.type==='essay') {
-    b = `<textarea style="min-height:160px;margin-top:10px" oninput="ans(this.value,1)" placeholder="Trình bày chi tiết lời giải tự luận...">${esc(a||'')}</textarea>`;
-  }
+  if(q.type==='essay') { b = essayBox(a); }
 
   const pl = cd.qs.map((x,i)=>{
     const v = S.ans[i];
-    const done = Array.isArray(v) ? v.some(z=>z!=null) : (v!==undefined && v!=='');
+    const done = (Array.isArray(v) ? v.some(z=>z!=null) : (v!==undefined && v!=='')) || (((S.files||{})[i]||[]).length>0);
     return `<button class="${done?'d':''} ${S.flag?.[i]?'f':''} ${i===S.qi?'u':''}" onclick="S.qi=${i};push();exam()">${i+1}</button>`;
   }).join('');
 
@@ -782,9 +1183,14 @@ function exam(){
     </div>`;
 
   clearInterval(T); T=setInterval(tick, 500); tick();
+  hydrateImgs(); pvUpdate();
 }
 
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&mode==='hs'&&S&&!S.done&&!S.fin){S.viol=(S.viol||0)+1;push()}});
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden){window._pickUntil=Math.min(window._pickUntil||0,Date.now()+2000);return}
+  if(Date.now()<(window._pickUntil||0))return;   // đang mở camera/chọn ảnh
+  if(mode==='hs'&&S&&!S.done&&!S.fin){S.viol=(S.viol||0)+1;push()}
+});
 function ans(v, keep){ S.ans[S.qi] = v; push(); if(!keep) exam(); }
 function tf(k, v){ const a = (S.ans[S.qi] || [null,null,null,null]).slice(); a[k] = v; S.ans[S.qi] = a; push(); exam(); }
 
@@ -794,7 +1200,7 @@ async function fin(){if(S.fin)return;S.fin=1;clearInterval(T);
  const r=await api('submit',{sbd:S.sbd,subject:currentSub,token:S.token,ans:S.ans,viol:S.viol});
  if(!r.ok){S.fin=0;alert(r.err);return}
  S.g=r.g;S.done=true;result()}
-function result(){const g=S.g||{p:0};$('#app').innerHTML=`<div class="c" style="max-width:520px;margin:30px auto;text-align:center"><h2>Đã nộp bài môn ${currentSub}!</h2><div style="font-size:2.4rem;font-weight:800;color:var(--pr)">${g.p.toFixed(2)}<span class="mu" style="font-size:1rem"> /10</span></div><button onclick="S=null;login()">Thoát</button></div>`}
+function result(){const g=S.g||{p:0};$('#app').innerHTML=`<div class="c" style="max-width:520px;margin:30px auto 12px;text-align:center"><h2>Đã nộp bài môn ${currentSub}!</h2><div style="font-size:2.4rem;font-weight:800;color:var(--pr)">${g.p.toFixed(2)}<span class="mu" style="font-size:1rem"> /10</span></div><div class="sm mu">Điểm phần trắc nghiệm / trả lời ngắn. Điểm tự luận sẽ được công bố sau khi giám khảo chấm.</div><button onclick="S=null;login()" style="margin-top:8px">Thoát</button></div><div class="c" id="fbBox" style="max-width:860px;margin:0 auto 30px"></div>`;fbLoad()}
 
 const _moObs = new MutationObserver(()=>{ clearTimeout(window._mjTimer); window._mjTimer = setTimeout(()=>{ if(window.renderMathInElement) renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false}); }, 40); });
 window.addEventListener('load', ()=>{ _moObs.observe($('#app'),{childList:true,subtree:true}); if(window.renderMathInElement) renderMathInElement($('#app'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false}); });
