@@ -358,7 +358,7 @@ function admin(){
       <td><input style="width:130px;padding:3px 6px" value="${esc(q.tag||'Chủ đề chung')}" placeholder="Tên chủ đề..." onchange="D.bank[${i}].tag=this.value;save()"></td>
       <td><select onchange="D.bank[${i}].type=this.value;save()"><option value="mc" ${q.type==='mc'?'selected':''}>Nhiều lựa chọn</option><option value="tf" ${q.type==='tf'?'selected':''}>Đúng/Sai</option><option value="sa" ${q.type==='sa'?'selected':''}>Trả lời ngắn</option><option value="essay" ${q.type==='essay'?'selected':''}>Tự luận</option></select></td>
       <td><select onchange="D.bank[${i}].level=this.value;save()"><option value="NB" ${q.level==='NB'?'selected':''}>Nhận biết</option><option value="TH" ${q.level==='TH'?'selected':''}>Thông hiểu</option><option value="VD" ${q.level==='VD'?'selected':''}>Vận dụng</option><option value="VDC" ${q.level==='VDC'?'selected':''}>VD cao</option></select></td>
-      <td>${ER(String(q.stem).slice(0,160))}${q.type==='mc'&&q.opt&&q.opt.A ? '<br><b>A:</b> '+ER(q.opt.A)+' | <b>B:</b> '+ER(q.opt.B)+' | <b>C:</b> '+ER(q.opt.C)+' | <b>D:</b> '+ER(q.opt.D) : ''}</td>
+      <td><div style="white-space:pre-wrap;overflow-wrap:anywhere;min-width:260px">${ER(String(q.stem||''))}</div>${q.type==='mc'&&q.opt ? `<div style="margin-top:6px;white-space:pre-wrap;overflow-wrap:anywhere"><b>A:</b> ${ER(q.opt.A||'(chưa có)')}<br><b>B:</b> ${ER(q.opt.B||'(chưa có)')}<br><b>C:</b> ${ER(q.opt.C||'(chưa có)')}<br><b>D:</b> ${ER(q.opt.D||'(chưa có)')}</div>` : ''}${q.type==='tf'&&Array.isArray(q.st) ? `<div style="margin-top:8px;border-top:1px solid var(--bd);padding-top:6px;white-space:pre-wrap;overflow-wrap:anywhere">${q.st.map((x,j)=>`<div style="margin:4px 0"><b>${'abcd'[j]})</b> ${ER(x.t||'(chưa có nội dung)')}</div>`).join('')}</div>` : ''}</td>
       <td>${q.type==='mc'
         ? `<input style="width:70px" maxlength="1" value="${esc(q.key || (Array.isArray(q.ans)?q.ans[0]||'':''))}" placeholder="A-D" onchange="D.bank[${i}].key=this.value.trim().toUpperCase();save()">`
         : q.type==='tf'
@@ -632,28 +632,27 @@ function parseTextToBank(txt){
       let body=l.replace(/^[a-d]\s*[.)]\s*/i,'').replace(/^#/,'').trim();
       const level=body.match(/\[(NB|TH|VD|VDC)\]/i); if(level) cur.st[idx].lv=level[1].toUpperCase();
       body=body.replace(/\[(NB|TH|VD|VDC)\]/ig,'').replace(/^#/,'').trim();
-      // QUY ƯỚC ĐÚNG/SAI CỦA THẦY: gạch chân nhãn a)/b)/c)/d) = ý ĐÚNG;
-      // nhãn không gạch chân = ý SAI. Không suy luận từ chữ trong nội dung phát biểu.
-      // Chỉ nhận diện dấu gạch chân nếu run được gạch chân đúng là nhãn của ý hiện tại.
-      const underlinedLabel = marked.some(x => {
-        const m = String(x).trim().match(/^([a-d])(?:[.)])?$/i);
-        return !!m && 'abcd'.indexOf(m[1].toLowerCase()) === idx;
-      });
-      cur.st[idx].ok = underlinedLabel;
+      // Mỗi ý Đ/S được đánh dấu bằng cách gạch chân đúng một từ Đúng hoặc Sai.
+      const truthMarks=marked.filter(x=>/^(đúng|sai)$/i.test(x));
+      if(truthMarks.length===1) cur.st[idx].ok=/^đúng$/i.test(truthMarks[0]);
+      else {
+        const inlineTruth=body.match(/\[(Đ|ĐÚNG|S|SAI)\]\s*$/i);
+        if(inlineTruth) cur.st[idx].ok=['đ','đúng'].includes(inlineTruth[1].toLowerCase());
+      }
+      body=body.replace(/\s*(?:Đúng\s*\/\s*Sai|Sai\s*\/\s*Đúng)\s*$/i,'').trim();
       cur.st[idx].t=body;return;
     }
-    // Tách phương án A-D ở dạng A., A), A:; hỗ trợ nhiều phương án cùng một dòng,
-    // kể cả khi Word ghép sát nhãn hoặc ngăn cách bằng dấu |.
-    const labelRe=/(^|[\s|])([A-D])[.):]\s*/g;
+    // Tách phương án kể cả khi Word ghép sát nhãn, ví dụ "A. ...B. ...".
+    const labelRe=/(?:^|[\s.])([A-D])[.)]\s*/g;
     const labels=[]; let lmOpt;
-    while((lmOpt=labelRe.exec(l))!==null) labels.push({key:lmOpt[2].toUpperCase(), start:lmOpt.index+lmOpt[0].length, matchStart:lmOpt.index});
+    while((lmOpt=labelRe.exec(l))!==null) labels.push({key:lmOpt[1].toUpperCase(), start:lmOpt.index+lmOpt[0].length});
     if(labels.length){
       labels.forEach((item,i)=>{
-        const end=i+1<labels.length ? labels[i+1].matchStart : l.length;
-        const value=l.slice(item.start,end).replace(/[\s|]+$/,'').trim();
+        const end=i+1<labels.length ? labels[i+1].start-labels[i+1].key.length-2 : l.length;
+        const value=l.slice(item.start,Math.max(item.start,end)).trim();
         if(value) cur.opt[item.key]=value;
       });
-      const markedKeys=marked.map(x=>x.match(/^([A-D])(?:[.):])?$/i)).filter(Boolean).map(x=>x[1].toUpperCase());
+      const markedKeys=marked.map(x=>x.match(/^([A-D])(?:[.)])?$/i)).filter(Boolean).map(x=>x[1].toUpperCase());
       if(!cur.keyExplicit){if(markedKeys.length===1) cur.key=markedKeys[0];
       else if(markedKeys.length>1) cur.key='MULTIPLE';}
       return;
@@ -680,12 +679,16 @@ function gen(){
   let codes = [];
   for(let i = 1; i <= n; i++){
     let codeStr = String(100 + i).padStart(4, '0');
-    // Giữ thứ tự câu hỏi đúng như ngân hàng để giáo viên dễ đối chiếu.
-    // Nếu muốn tạo mã đề đảo thứ tự, sẽ bổ sung thành tùy chọn riêng.
-    const orderedQs = JSON.parse(JSON.stringify(D.bank));
+    let shuffledQs = JSON.parse(JSON.stringify(D.bank));
+    // Fisher-Yates: mỗi mã đề có thứ tự câu hỏi riêng, giữ nguyên q.no để đối chiếu chấm tự luận.
+    for(let j = shuffledQs.length - 1; j > 0; j--){
+      const k = Math.floor(Math.random() * (j + 1));
+      [shuffledQs[j], shuffledQs[k]] = [shuffledQs[k], shuffledQs[j]];
+    }
+    
     codes.push({
-      code: codeStr,
-      qs: orderedQs.slice(0, targetCount)
+      code: codeStr, 
+      qs: shuffledQs.slice(0, targetCount)
     });
   }
   D.cfg.codes = codes;
