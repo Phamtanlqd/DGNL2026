@@ -642,17 +642,18 @@ function parseTextToBank(txt){
       cur.st[idx].ok = underlinedLabel;
       cur.st[idx].t=body;return;
     }
-    // Tách phương án kể cả khi Word ghép sát nhãn, ví dụ "A. ...B. ...".
-    const labelRe=/(?:^|[\s.])([A-D])[.)]\s*/g;
+    // Tách phương án A-D ở dạng A., A), A:; hỗ trợ nhiều phương án cùng một dòng,
+    // kể cả khi Word ghép sát nhãn hoặc ngăn cách bằng dấu |.
+    const labelRe=/(^|[\s|])([A-D])[.):]\s*/g;
     const labels=[]; let lmOpt;
-    while((lmOpt=labelRe.exec(l))!==null) labels.push({key:lmOpt[1].toUpperCase(), start:lmOpt.index+lmOpt[0].length});
+    while((lmOpt=labelRe.exec(l))!==null) labels.push({key:lmOpt[2].toUpperCase(), start:lmOpt.index+lmOpt[0].length, matchStart:lmOpt.index});
     if(labels.length){
       labels.forEach((item,i)=>{
-        const end=i+1<labels.length ? labels[i+1].start-labels[i+1].key.length-2 : l.length;
-        const value=l.slice(item.start,Math.max(item.start,end)).trim();
+        const end=i+1<labels.length ? labels[i+1].matchStart : l.length;
+        const value=l.slice(item.start,end).replace(/[\s|]+$/,'').trim();
         if(value) cur.opt[item.key]=value;
       });
-      const markedKeys=marked.map(x=>x.match(/^([A-D])(?:[.)])?$/i)).filter(Boolean).map(x=>x[1].toUpperCase());
+      const markedKeys=marked.map(x=>x.match(/^([A-D])(?:[.):])?$/i)).filter(Boolean).map(x=>x[1].toUpperCase());
       if(!cur.keyExplicit){if(markedKeys.length===1) cur.key=markedKeys[0];
       else if(markedKeys.length>1) cur.key='MULTIPLE';}
       return;
@@ -679,16 +680,12 @@ function gen(){
   let codes = [];
   for(let i = 1; i <= n; i++){
     let codeStr = String(100 + i).padStart(4, '0');
-    let shuffledQs = JSON.parse(JSON.stringify(D.bank));
-    // Fisher-Yates: mỗi mã đề có thứ tự câu hỏi riêng, giữ nguyên q.no để đối chiếu chấm tự luận.
-    for(let j = shuffledQs.length - 1; j > 0; j--){
-      const k = Math.floor(Math.random() * (j + 1));
-      [shuffledQs[j], shuffledQs[k]] = [shuffledQs[k], shuffledQs[j]];
-    }
-    
+    // Giữ thứ tự câu hỏi đúng như ngân hàng để giáo viên dễ đối chiếu.
+    // Nếu muốn tạo mã đề đảo thứ tự, sẽ bổ sung thành tùy chọn riêng.
+    const orderedQs = JSON.parse(JSON.stringify(D.bank));
     codes.push({
-      code: codeStr, 
-      qs: shuffledQs.slice(0, targetCount)
+      code: codeStr,
+      qs: orderedQs.slice(0, targetCount)
     });
   }
   D.cfg.codes = codes;
